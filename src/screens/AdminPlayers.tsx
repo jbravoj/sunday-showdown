@@ -10,6 +10,7 @@ import {
 } from "../../shared/invite.ts";
 import { STATUS_ORDER, type PlayerAction } from "../../shared/players.ts";
 import { RULES_VERSION } from "../../shared/rules.ts";
+import AdminSquares from "./AdminSquares.tsx";
 
 interface PlayerRow {
   uid: string;
@@ -110,6 +111,14 @@ export default function AdminPlayers({ myUid }: { myUid: string }) {
         {rows === null && !listError && <p className="hint">Loading…</p>}
         {rows?.length === 0 && <p className="hint">No players yet. Send some invites.</p>}
       </section>
+
+      {rows && rows.some((r) => r.status === "approved") && (
+        <AdminSquares
+          approved={rows
+            .filter((r) => r.status === "approved")
+            .map((r) => ({ uid: r.uid, displayName: r.displayName }))}
+        />
+      )}
 
       {(["pending", "approved", "removed"] as const).map((status) => {
         const group = rows?.filter((r) => r.status === status) ?? [];

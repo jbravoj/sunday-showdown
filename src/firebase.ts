@@ -49,6 +49,10 @@ export const api = {
     { ok: true }
   >("setPlayerStatus"),
   renamePlayer: callable<{ uid: string; displayName: string }, { ok: true }>("renamePlayer"),
+  manageSquares: callable<
+    { op: "draw" } | { op: "clear"; squareId: string } | { op: "place"; squareId: string; uid: string },
+    { ok: true; summary: string }
+  >("manageSquares"),
 };
 
 /** Human-readable message from a Firebase or other error. */

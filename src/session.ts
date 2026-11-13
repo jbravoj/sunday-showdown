@@ -11,6 +11,7 @@ import {
 import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
 import { auth, db } from "./firebase.ts";
 import { normalizeInviteCode, type PlayerStatus } from "../shared/invite.ts";
+import { CURRENT_SEASON, normalizeSquares, type Seat } from "../shared/season.ts";
 
 // ---------- local storage (wrapped: storage can throw in private modes) ----------
 
@@ -180,5 +181,30 @@ export function usePlayer(uid: string | null): PlayerState {
       (err) => setState({ loading: false, player: null, error: err.message }),
     );
   }, [uid]);
+  return state;
+}
+
+// ---------- season squares ----------
+
+export type SeasonState =
+  | { loading: true }
+  | { loading: false; squares: Record<string, Seat | null>; error: string | null };
+
+/** Live view of the current season's squares. Only call for approved players or the admin. */
+export function useSeason(enabled: boolean): SeasonState {
+  const [state, setState] = useState<SeasonState>({ loading: true });
+  useEffect(() => {
+    if (!enabled) return;
+    return onSnapshot(
+      doc(db, "seasons", CURRENT_SEASON),
+      (snap) =>
+        setState({
+          loading: false,
+          squares: normalizeSquares(snap.exists() ? snap.get("squares") : null),
+          error: null,
+        }),
+      (err) => setState({ loading: false, squares: normalizeSquares(null), error: err.message }),
+    );
+  }, [enabled]);
   return state;
 }

@@ -47,6 +47,23 @@ waiting for approval, on the board, and removed, with a live seat count.
 
 Only approved players see the board. Every action is written to `auditLog`.
 
+## Season squares (Phase 4)
+
+The board has 12 permanent squares, numbered **1–12** left to right, top to
+bottom (the white 2×2 blocks). The season record lives at `seasons/2027`
+([`shared/season.ts`](shared/season.ts) has the rules).
+
+On the **Players** page the admin can:
+
+- **Pick a player for a square.** If they already have a square, the two
+  squares swap. Swaps are allowed any time, including mid-season.
+- **Clear** a square. An open square that comes up rolls the pot over.
+- **Random draw:** seats every approved player without a square into open
+  squares at random (server-side `crypto.randomInt`), leaving filled ones alone.
+
+Removing a player opens their square; renaming updates the board. Players see
+the season board with their own square outlined, plus a "Your square" card.
+
 All writes go through Cloud Functions in [`functions/src`](functions/src/index.ts);
 Firestore rules let a player read only their own record, and the admin read
 players, invitations and the audit log. Every action is written to `auditLog`.
@@ -101,7 +118,7 @@ firebase deploy --only functions,firestore
 1. ✅ Project setup and deploy pipeline
 2. ✅ Invite-only registration and rules acceptance
 3. ✅ Admin approval and player management
-4. Permanent season squares
+4. ✅ Permanent season squares
 5. Weekly board generation and publication
 6. Payments and automatic board lock
 7. Prize calculations and rollovers

@@ -1,9 +1,92 @@
 import Board from "../Board.tsx";
+import { useSeason } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
 import { computePrize, formatCents, resolveWeek } from "../../shared/game.ts";
+import {
+  CURRENT_SEASON,
+  SQUARE_IDS,
+  SQUARE_BLOCKS,
+  seasonLayout,
+  squareNumber,
+  squareOf,
+} from "../../shared/season.ts";
 
-// Approved players' home. Until weekly boards arrive (Phase 5) it shows a
-// real past board (2026 Week 4) run through the same rules code as the server.
+const NO_DIGITS = Array.from({ length: 10 }, () => null);
+
+/** Approved players' home: the season board with everyone's permanent square. */
+export default function Home({ uid }: { uid: string }) {
+  const season = useSeason(true);
+
+  if (season.loading) return <p className="coming">Loading…</p>;
+  if (season.error) return <p className="error">{season.error}</p>;
+
+  const { squares } = season;
+  const filled = SQUARE_IDS.filter((id) => squares[id] !== null).length;
+  const open = SQUARE_IDS.filter((id) => squares[id] === null);
+  const mine = squareOf(squares, uid);
+
+  return (
+    <>
+      <section className="card scoreline">
+        <div>
+          <p className="label">{CURRENT_SEASON} season</p>
+          <p className="matchup">The board</p>
+        </div>
+        <div className="pot">
+          <p className="label">Squares</p>
+          <p className="pot-amount">
+            {filled}
+            <span className="pot-of">/12</span>
+          </p>
+        </div>
+      </section>
+
+      <Board
+        layout={seasonLayout(squares)}
+        topDigits={NO_DIGITS}
+        leftDigits={NO_DIGITS}
+        topTeam="Team TBD"
+        leftTeam="Team TBD"
+        mySquareId={mine}
+        openSquareIds={open}
+      />
+      <p className="board-note">
+        Numbers 0–9 are shuffled for each week's game. The teams and numbers go up here every
+        Sunday.
+      </p>
+
+      <section className="card your-square">
+        {mine ? (
+          <>
+            <div>
+              <p className="label">Your square</p>
+              <p className="matchup">
+                {squareNumber(mine)} · {squares[mine]!.name}
+              </p>
+              <p className="hint">
+                Row {SQUARE_BLOCKS[mine].row + 1}, column {SQUARE_BLOCKS[mine].col + 1} on the
+                board. It's yours all season.
+              </p>
+            </div>
+            <span className="square-badge">{squareNumber(mine)}</span>
+          </>
+        ) : (
+          <div>
+            <p className="label">Your square</p>
+            <p className="hint">The admin hasn't assigned your square yet. Check back soon.</p>
+          </div>
+        )}
+      </section>
+
+      <details className="card panel sample">
+        <summary>How a week is decided</summary>
+        <SampleWeek />
+      </details>
+    </>
+  );
+}
+
+// A real past board (2026 Week 4) run through the same rules code as the server.
 const SAMPLE = {
   topTeam: "Panthers",
   leftTeam: "Lions",
@@ -13,7 +96,7 @@ const SAMPLE = {
   leftScore: 26,
 };
 
-export default function Home() {
+function SampleWeek() {
   const prize = computePrize(12, 100_000);
   const outcome = resolveWeek({
     layout: DEFAULT_LAYOUT,
@@ -26,26 +109,12 @@ export default function Home() {
   });
 
   return (
-    <>
-      <section className="card scoreline">
-        <div>
-          <p className="label">Sample · 2026 Week 4 · Final</p>
-          <p className="matchup">
-            {SAMPLE.topTeam} {SAMPLE.topScore}
-          </p>
-          <p className="matchup">
-            {SAMPLE.leftTeam} {SAMPLE.leftScore}
-          </p>
-        </div>
-        <div className="pot">
-          <p className="label">Pot</p>
-          <p className="pot-amount">{formatCents(prize.potCents)}</p>
-          {prize.rolloverInCents > 0 && (
-            <p className="pot-note">incl. {formatCents(prize.rolloverInCents)} rollover</p>
-          )}
-        </div>
-      </section>
-
+    <div className="sample-body">
+      <p className="hint">
+        2026 Week 4: {SAMPLE.topTeam} {SAMPLE.topScore}, {SAMPLE.leftTeam} {SAMPLE.leftScore}{" "}
+        (end of regulation). Pot {formatCents(prize.potCents)}, including a{" "}
+        {formatCents(prize.rolloverInCents)} rollover.
+      </p>
       <Board
         layout={DEFAULT_LAYOUT}
         topDigits={SAMPLE.topDigits}
@@ -56,20 +125,12 @@ export default function Home() {
         hotTopDigit={outcome.topDigit}
         hotLeftDigit={outcome.leftDigit}
       />
-
-      <section className="card result">
-        {outcome.kind === "win" ? (
-          <p>
-            Digits {outcome.topDigit} and {outcome.leftDigit} land on{" "}
-            <strong>{outcome.label}</strong>, who wins{" "}
-            <strong>{formatCents(outcome.awardedCents)}</strong>.
-          </p>
-        ) : (
-          <p>No winner. {formatCents(outcome.rolloverOutCents)} rolls over.</p>
-        )}
-      </section>
-
-      <p className="coming">Weekly boards arrive for the 2027 season</p>
-    </>
+      {outcome.kind === "win" && (
+        <p className="hint">
+          Last digits {outcome.topDigit} and {outcome.leftDigit} cross on{" "}
+          <strong>{outcome.label}</strong>, who wins {formatCents(outcome.awardedCents)}.
+        </p>
+      )}
+    </div>
   );
 }

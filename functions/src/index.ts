@@ -25,6 +25,15 @@ import {
 } from "../../shared/invite.ts";
 import { RULES_VERSION } from "../../shared/rules.ts";
 import { checkPlayerAction, type PlayerAction } from "../../shared/players.ts";
+import {
+  CURRENT_SEASON,
+  SQUARE_IDS,
+  applySquareOp,
+  normalizeSquares,
+  renameSeat,
+  vacate,
+  type SquareOp,
+} from "../../shared/season.ts";
 
 initializeApp();
 // invoker "public": callable functions must be reachable from the site; each
@@ -35,6 +44,7 @@ const db = getFirestore();
 const invitations = db.collection("invitations");
 const players = db.collection("players");
 const auditLog = db.collection("auditLog");
+const seasonRef = db.collection("seasons").doc(CURRENT_SEASON);
 
 // ---------- helpers ----------
 
@@ -301,7 +311,11 @@ export const setPlayerStatus = onCall(async (req) => {
   const playerRef = players.doc(uid);
 
   await db.runTransaction(async (tx) => {
-    const [snap, allPlayers] = await Promise.all([tx.get(playerRef), tx.get(players)]);
+    const [snap, allPlayers, season] = await Promise.all([
+      tx.get(playerRef),
+      tx.get(players),
+      tx.get(seasonRef),
+    ]);
     if (!snap.exists) throw new HttpsError("not-found", "Player not found.");
     const status = snap.get("status") as PlayerStatus;
     const seats = seatsTaken(allPlayers.docs.map((d) => d.get("status") as PlayerStatus));
@@ -320,6 +334,13 @@ export const setPlayerStatus = onCall(async (req) => {
       ...(action === "reinstate" ? { reinstatedAt: stamp } : {}),
     });
     audit(tx, admin.uid, `player.${action}`, playerRef, { from: status, to: check.next });
+    // A removed player's square goes open; the admin can seat a replacement.
+    if (action === "remove" && season.exists) {
+      tx.update(seasonRef, {
+        squares: vacate(normalizeSquares(season.get("squares")), uid),
+        updatedAt: stamp,
+      });
+    }
   });
 
   return { ok: true };
@@ -336,7 +357,11 @@ export const renamePlayer = onCall(async (req) => {
   const playerRef = players.doc(uid);
 
   await db.runTransaction(async (tx) => {
-    const [snap, allPlayers] = await Promise.all([tx.get(playerRef), tx.get(players)]);
+    const [snap, allPlayers, season] = await Promise.all([
+      tx.get(playerRef),
+      tx.get(players),
+      tx.get(seasonRef),
+    ]);
     if (!snap.exists) throw new HttpsError("not-found", "Player not found.");
     const before = String(snap.get("displayName"));
     if (before === displayName) return;
@@ -348,8 +373,60 @@ export const renamePlayer = onCall(async (req) => {
     );
     if (taken) throw new HttpsError("already-exists", "Someone already has that name.");
     tx.update(playerRef, { displayName });
+    if (season.exists) {
+      tx.update(seasonRef, {
+        squares: renameSeat(normalizeSquares(season.get("squares")), uid, displayName),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
     audit(tx, admin.uid, "player.rename", playerRef, { from: before, to: displayName });
   });
 
   return { ok: true };
+});
+
+// ---------- admin: season squares ----------
+
+/**
+ * Admin places, swaps, clears or randomly draws players into the season's
+ * 12 permanent squares. Placing a player who already has a square swaps them.
+ */
+export const manageSquares = onCall(async (req) => {
+  const admin = requireAdmin(req);
+  const data = (req.data ?? {}) as Record<string, unknown>;
+  let op: SquareOp;
+  if (data.op === "draw") {
+    op = { op: "draw" };
+  } else if (data.op === "clear" || data.op === "place") {
+    const squareId = str(data.squareId, "Square", 8);
+    if (!SQUARE_IDS.includes(squareId)) throw new HttpsError("invalid-argument", "Unknown square.");
+    op = data.op === "clear" ? { op: "clear", squareId } : { op: "place", squareId, uid: playerId(data.uid) };
+  } else {
+    throw new HttpsError("invalid-argument", "Unknown operation.");
+  }
+
+  const summary = await db.runTransaction(async (tx) => {
+    const [season, approvedSnap] = await Promise.all([
+      tx.get(seasonRef),
+      tx.get(players.where("status", "==", "approved")),
+    ]);
+    const approved = new Map(approvedSnap.docs.map((d) => [d.id, String(d.get("displayName"))]));
+    const result = applySquareOp(normalizeSquares(season.get("squares")), op, approved, randomInt);
+    if (!result.ok) throw new HttpsError("failed-precondition", result.error);
+
+    tx.set(
+      seasonRef,
+      {
+        year: Number(CURRENT_SEASON),
+        squares: result.squares,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(season.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      },
+      { merge: true },
+    );
+    audit(tx, admin.uid, `squares.${op.op}`, seasonRef, { ...op, summary: result.summary });
+    return result.summary;
+  });
+
+  return { ok: true, summary };
 });
