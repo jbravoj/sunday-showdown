@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// Phase 1: everything locked. Read access for approved players and admins is
+// added collection by collection in later phases. All writes to boards,
+// payments, ledger, invitations and the audit log go through Cloud Functions
+// (which bypass these rules), so clients never get write access to them.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
