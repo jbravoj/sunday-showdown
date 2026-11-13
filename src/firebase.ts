@@ -44,6 +44,11 @@ export const api = {
     "redeemInvitation",
   ),
   acceptRules: callable<{ version: string }, { ok: true }>("acceptRules"),
+  setPlayerStatus: callable<
+    { uid: string; action: "approve" | "remove" | "reinstate" },
+    { ok: true }
+  >("setPlayerStatus"),
+  renamePlayer: callable<{ uid: string; displayName: string }, { ok: true }>("renamePlayer"),
 };
 
 /** Human-readable message from a Firebase or other error. */

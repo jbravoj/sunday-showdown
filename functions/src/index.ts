@@ -24,9 +24,12 @@ import {
   type PlayerStatus,
 } from "../../shared/invite.ts";
 import { RULES_VERSION } from "../../shared/rules.ts";
+import { checkPlayerAction, type PlayerAction } from "../../shared/players.ts";
 
 initializeApp();
-setGlobalOptions({ region: "us-central1", maxInstances: 5 });
+// invoker "public": callable functions must be reachable from the site; each
+// one checks the caller's sign-in and admin claim itself.
+setGlobalOptions({ region: "us-central1", maxInstances: 5, invoker: "public" });
 
 const db = getFirestore();
 const invitations = db.collection("invitations");
@@ -273,6 +276,79 @@ export const acceptRules = onCall(async (req) => {
       rulesAcceptedAt: FieldValue.serverTimestamp(),
     });
     audit(tx, caller.uid, "player.acceptRules", playerRef, { version: RULES_VERSION });
+  });
+
+  return { ok: true };
+});
+
+// ---------- admin: player management ----------
+
+const PLAYER_ACTIONS: readonly PlayerAction[] = ["approve", "remove", "reinstate"];
+
+function playerId(value: unknown): string {
+  const uid = str(value, "Player id", 128);
+  if (!/^[A-Za-z0-9_-]+$/.test(uid)) throw new HttpsError("invalid-argument", "Bad player id.");
+  return uid;
+}
+
+/** Admin approves, removes or reinstates a player. */
+export const setPlayerStatus = onCall(async (req) => {
+  const admin = requireAdmin(req);
+  const data = (req.data ?? {}) as Record<string, unknown>;
+  const uid = playerId(data.uid);
+  const action = data.action as PlayerAction;
+  if (!PLAYER_ACTIONS.includes(action)) throw new HttpsError("invalid-argument", "Unknown action.");
+  const playerRef = players.doc(uid);
+
+  await db.runTransaction(async (tx) => {
+    const [snap, allPlayers] = await Promise.all([tx.get(playerRef), tx.get(players)]);
+    if (!snap.exists) throw new HttpsError("not-found", "Player not found.");
+    const status = snap.get("status") as PlayerStatus;
+    const seats = seatsTaken(allPlayers.docs.map((d) => d.get("status") as PlayerStatus));
+    const check = checkPlayerAction(
+      { status, rulesAccepted: snap.get("rulesVersion") === RULES_VERSION },
+      action,
+      seats,
+    );
+    if (!check.ok) throw new HttpsError("failed-precondition", check.error);
+
+    const stamp = FieldValue.serverTimestamp();
+    tx.update(playerRef, {
+      status: check.next,
+      ...(action === "approve" ? { approvedAt: stamp, approvedBy: admin.uid } : {}),
+      ...(action === "remove" ? { removedAt: stamp, removedBy: admin.uid } : {}),
+      ...(action === "reinstate" ? { reinstatedAt: stamp } : {}),
+    });
+    audit(tx, admin.uid, `player.${action}`, playerRef, { from: status, to: check.next });
+  });
+
+  return { ok: true };
+});
+
+/** Admin changes the name shown on a player's square. */
+export const renamePlayer = onCall(async (req) => {
+  const admin = requireAdmin(req);
+  const data = (req.data ?? {}) as Record<string, unknown>;
+  const uid = playerId(data.uid);
+  const nameCheck = validateDisplayName(str(data.displayName, "Name", 100));
+  if (!nameCheck.ok) throw new HttpsError("invalid-argument", nameCheck.error);
+  const displayName = nameCheck.name;
+  const playerRef = players.doc(uid);
+
+  await db.runTransaction(async (tx) => {
+    const [snap, allPlayers] = await Promise.all([tx.get(playerRef), tx.get(players)]);
+    if (!snap.exists) throw new HttpsError("not-found", "Player not found.");
+    const before = String(snap.get("displayName"));
+    if (before === displayName) return;
+    const taken = allPlayers.docs.some(
+      (d) =>
+        d.id !== uid &&
+        d.get("status") !== "removed" &&
+        String(d.get("displayName")).toLowerCase() === displayName.toLowerCase(),
+    );
+    if (taken) throw new HttpsError("already-exists", "Someone already has that name.");
+    tx.update(playerRef, { displayName });
+    audit(tx, admin.uid, "player.rename", playerRef, { from: before, to: displayName });
   });
 
   return { ok: true };

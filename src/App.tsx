@@ -1,11 +1,18 @@
 import { navigate, signOut, useAuth, usePlayer, useRoute } from "./session.ts";
 import { RULES_VERSION } from "../shared/rules.ts";
 import AdminInvites from "./screens/AdminInvites.tsx";
+import AdminPlayers from "./screens/AdminPlayers.tsx";
 import Home from "./screens/Home.tsx";
 import Join from "./screens/Join.tsx";
 import Pending from "./screens/Pending.tsx";
 import Rules from "./screens/Rules.tsx";
 import SignIn from "./screens/SignIn.tsx";
+
+const ADMIN_TABS = [
+  { path: "/", label: "Board" },
+  { path: "/players", label: "Players" },
+  { path: "/invites", label: "Invites" },
+];
 
 export default function App() {
   const route = useRoute();
@@ -20,6 +27,8 @@ export default function App() {
     screen = <SignIn />;
   } else if (route === "/invites" && auth.isAdmin) {
     screen = <AdminInvites />;
+  } else if (route === "/players" && auth.isAdmin) {
+    screen = <AdminPlayers myUid={auth.user.uid} />;
   } else if (!playerState.loading && playerState.error) {
     screen = <p className="error">{playerState.error}</p>;
   } else if (!player) {
@@ -55,13 +64,13 @@ export default function App() {
         <nav className="userbar">
           <span className="userbar-name">{player?.displayName ?? auth.user.email}</span>
           {auth.isAdmin &&
-            (route === "/invites" ? (
-              <button className="link" onClick={() => navigate("/")}>
-                My board
-              </button>
-            ) : (
-              <button className="link" onClick={() => navigate("/invites")}>
-                Invites
+            ADMIN_TABS.map((tab) => (
+              <button
+                key={tab.path}
+                className={`link${route === tab.path ? " link-active" : ""}`}
+                onClick={() => navigate(tab.path)}
+              >
+                {tab.label}
               </button>
             ))}
           <button className="link" onClick={() => void signOut()}>

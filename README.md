@@ -32,7 +32,20 @@ group's real 2026 boards in [`shared/game.test.ts`](shared/game.test.ts).
    their player record as **pending**. Registration closes at 12 seats.
 4. They read and accept the house rules ([`shared/rules.ts`](shared/rules.ts)).
    Changing `RULES_VERSION` sends everyone back to re-accept.
-5. They wait for the admin to approve them (Phase 3).
+5. They wait for the admin to approve them on the **Players** page.
+
+## Managing players (Phase 3)
+
+The admin's **Players** page lists everyone who redeemed an invite, grouped as
+waiting for approval, on the board, and removed, with a live seat count.
+
+- **Approve** a pending player once they've accepted the house rules.
+- **Remove** a player (two taps) to free their seat. Their account stays, so
+  the history is kept.
+- **Reinstate** a removed player back into the approval queue, if a seat is free.
+- **Rename** the name shown on a player's square.
+
+Only approved players see the board. Every action is written to `auditLog`.
 
 All writes go through Cloud Functions in [`functions/src`](functions/src/index.ts);
 Firestore rules let a player read only their own record, and the admin read
@@ -87,7 +100,7 @@ firebase deploy --only functions,firestore
 
 1. ✅ Project setup and deploy pipeline
 2. ✅ Invite-only registration and rules acceptance
-3. Admin approval and player management
+3. ✅ Admin approval and player management
 4. Permanent season squares
 5. Weekly board generation and publication
 6. Payments and automatic board lock
