@@ -463,3 +463,18 @@ details.panel .rules {
 .invite-closed {
   opacity: 0.55;
 }
+
+/* ---- Email/password sign-in ---- */
+.notice {
+  margin: 12px 0 0;
+  color: var(--gold-hi);
+  font-size: 0.9rem;
+}
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 16px;
+  font-size: 0.85rem;
+}

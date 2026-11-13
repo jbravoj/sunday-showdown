@@ -42,18 +42,25 @@ function inviteDocId(code: string): string {
 
 interface Caller {
   uid: string;
-  email: string | null;
+  email: string;
+  emailVerified: boolean;
   isAdmin: boolean;
 }
 
+/** Players sign in with email and password. The invite code is what proves they belong. */
 function requireUser(req: CallableRequest): Caller {
   const auth = req.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Sign in first.");
   const token = auth.token;
-  if (token.email_verified !== true || typeof token.email !== "string") {
-    throw new HttpsError("failed-precondition", "Sign in with a verified email address.");
+  if (typeof token.email !== "string") {
+    throw new HttpsError("failed-precondition", "Sign in with an email address.");
   }
-  return { uid: auth.uid, email: token.email.toLowerCase(), isAdmin: token.admin === true };
+  return {
+    uid: auth.uid,
+    email: token.email.toLowerCase(),
+    emailVerified: token.email_verified === true,
+    isAdmin: token.admin === true,
+  };
 }
 
 function requireAdmin(req: CallableRequest): Caller {
@@ -193,12 +200,20 @@ export const redeemInvitation = onCall(async (req) => {
       );
     }
 
+    const lockedEmail = (inviteSnap.get("email") as string | null) ?? null;
+    // An email-locked invite only counts an address the player has proven they own.
+    if (lockedEmail !== null && !caller.emailVerified) {
+      throw new HttpsError(
+        "failed-precondition",
+        "This invite is locked to an email address. Verify your email first: use the link we sent you, then try again.",
+      );
+    }
     const check = checkInvitation(
       {
         expiresAtMs: (inviteSnap.get("expiresAt") as Timestamp).toMillis(),
         revoked: inviteSnap.get("revoked") === true,
         usedBy: (inviteSnap.get("usedBy") as string | null) ?? null,
-        email: (inviteSnap.get("email") as string | null) ?? null,
+        email: lockedEmail,
       },
       Date.now(),
       caller.email,

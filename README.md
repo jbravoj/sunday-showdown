@@ -25,8 +25,9 @@ group's real 2026 boards in [`shared/game.test.ts`](shared/game.test.ts).
 1. The admin creates an invite on the **Invites** page and shares the link
    (`…/#/join/K7QM4-XR9TB`). Each invite works once, expires after 14 days, and
    can be locked to one email address. Only a hash of the code is stored.
-2. The player opens the link and signs in with Google or a one-tap email link
-   (no passwords).
+2. The player opens the link and creates an account with email and password
+   (or signs in). Forgotten passwords are reset by email. A verification email
+   is sent on sign-up; it's only required for email-locked invites.
 3. They pick the name for their square and redeem the invite. That creates
    their player record as **pending**. Registration closes at 12 seats.
 4. They read and accept the house rules ([`shared/rules.ts`](shared/rules.ts)).
@@ -71,8 +72,8 @@ firebase deploy --only functions,firestore
 
 1. **Plan:** Cloud Functions need the Blaze (pay-as-you-go) plan. Usage for 12
    players stays inside the free allowance; set a budget alert anyway.
-2. **Authentication → Sign-in method:** enable **Google** and
-   **Email/Password → Email link (passwordless sign-in)**.
+2. **Authentication → Sign-in method:** enable **Email/Password** (the first
+   toggle only; leave "Email link" off). Google sign-in isn't used.
 3. **Authentication → Settings → Authorized domains:** add `jbravoj.github.io`.
 4. **Firestore:** create the database (production mode), then deploy as above.
 5. **Make yourself admin:** sign in on the site once, then
