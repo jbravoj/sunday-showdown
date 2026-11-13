@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  GoogleAuthProvider,
-  isSignInWithEmailLink,
+  createUserWithEmailAndPassword,
   onIdTokenChanged,
-  sendSignInLinkToEmail,
-  signInWithEmailLink,
-  signInWithPopup,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signOut as fbSignOut,
   type User,
 } from "firebase/auth";
@@ -15,7 +14,6 @@ import { normalizeInviteCode, type PlayerStatus } from "../shared/invite.ts";
 
 // ---------- local storage (wrapped: storage can throw in private modes) ----------
 
-const EMAIL_KEY = "ss.emailForSignIn";
 const CODE_KEY = "ss.inviteCode";
 
 function load(key: string): string | null {
@@ -94,34 +92,53 @@ export function useAuth(): AuthState {
   return state;
 }
 
-export async function signInWithGoogle(): Promise<void> {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-  await signInWithPopup(auth, provider);
+export async function signIn(email: string, password: string): Promise<void> {
+  await signInWithEmailAndPassword(auth, email, password);
 }
 
-/** Emails a one-tap sign-in link. No passwords to forget. */
-export async function sendEmailLink(email: string): Promise<void> {
-  const url = window.location.origin + window.location.pathname;
-  await sendSignInLinkToEmail(auth, email, { url, handleCodeInApp: true });
-  save(EMAIL_KEY, email);
+/** Creates the account and emails a verification link (needed only for email-locked invites). */
+export async function createAccount(email: string, password: string): Promise<void> {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  try {
+    await sendEmailVerification(cred.user);
+  } catch {
+    /* not fatal: they can still join with an unlocked invite */
+  }
 }
 
-/** True when the page was opened from a sign-in email. */
-export function isEmailLinkLanding(): boolean {
-  return isSignInWithEmailLink(auth, window.location.href);
+export async function resetPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email);
 }
 
-/** Email saved when the link was requested on this device, if any. */
-export function emailForLink(): string | null {
-  return load(EMAIL_KEY);
+/** Picks up a just-verified email before calling the server. */
+export async function refreshUser(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) return;
+  await user.reload();
+  await user.getIdToken(true);
 }
 
-export async function completeEmailLink(email: string): Promise<void> {
-  await signInWithEmailLink(auth, email, window.location.href);
-  save(EMAIL_KEY, null);
-  // Strip the one-time sign-in parameters from the address bar.
-  window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+/** Firebase auth error codes, in plain words. */
+export function authErrorMessage(err: unknown): string {
+  const code = (err as { code?: string } | null)?.code ?? "";
+  switch (code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+      return "Email or password is wrong.";
+    case "auth/email-already-in-use":
+      return "There's already an account with that email. Sign in instead.";
+    case "auth/weak-password":
+      return "Use a password of at least 8 characters.";
+    case "auth/invalid-email":
+      return "That email address doesn't look right.";
+    case "auth/too-many-requests":
+      return "Too many tries. Wait a few minutes and try again.";
+    case "auth/network-request-failed":
+      return "Couldn't reach the server. Check your connection.";
+    default:
+      return err instanceof Error ? err.message.replace(/^Firebase:\s*/, "") : "Something went wrong.";
+  }
 }
 
 export async function signOut(): Promise<void> {

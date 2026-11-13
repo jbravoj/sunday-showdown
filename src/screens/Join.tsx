@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { api, errorMessage } from "../firebase.ts";
-import { clearSavedInviteCode, getSavedInviteCode } from "../session.ts";
+import { clearSavedInviteCode, getSavedInviteCode, refreshUser } from "../session.ts";
 import {
   DISPLAY_NAME_MAX,
   normalizeInviteCode,
@@ -29,6 +29,7 @@ export default function Join({ suggestedName }: { suggestedName: string }) {
     }
     setBusy(true);
     try {
+      await refreshUser();
       await api.redeemInvitation({ code: canonical, displayName: nameCheck.name });
       clearSavedInviteCode();
       // The live player record moves the app on to the rules page.
