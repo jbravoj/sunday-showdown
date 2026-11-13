@@ -1,11 +1,36 @@
 rules_version = '2';
 
-// Phase 1: everything locked. Read access for approved players and admins is
-// added collection by collection in later phases. All writes to boards,
-// payments, ledger, invitations and the audit log go through Cloud Functions
-// (which bypass these rules), so clients never get write access to them.
+// Clients only ever read. Every write to players, invitations, boards,
+// payments, the ledger and the audit log goes through Cloud Functions (which
+// use the Admin SDK and bypass these rules).
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    // A player can read their own record; the admin can read everyone's.
+    match /players/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Stored under a hash of the code; only the admin can list them.
+    match /invitations/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /auditLog/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Everything else stays locked until a later phase opens it.
     match /{document=**} {
       allow read, write: if false;
     }

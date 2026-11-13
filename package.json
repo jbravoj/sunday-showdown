@@ -1,7 +1,7 @@
 {
   "name": "sunday-showdown",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "engines": {
     "node": ">=22.6"
@@ -10,8 +10,10 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test shared/game.test.ts",
-    "emulators": "firebase emulators:start"
+    "test": "node --experimental-strip-types --test shared/*.test.ts",
+    "emulators": "npm --prefix functions run build && firebase emulators:start",
+    "build:functions": "npm --prefix functions install && npm --prefix functions run build",
+    "dev:emulators": "VITE_USE_EMULATORS=true vite"
   },
   "dependencies": {
     "firebase": "^11.0.0",

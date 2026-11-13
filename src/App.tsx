@@ -1,77 +1,76 @@
-import Board from "./Board.tsx";
-import { DEFAULT_LAYOUT } from "../shared/layout.ts";
-import { computePrize, formatCents, resolveWeek } from "../shared/game.ts";
-
-// Phase 1 placeholder: renders a real past board (2026 Week 4) through the
-// same rules code the server will use, to prove the pieces fit together.
-const SAMPLE = {
-  topTeam: "Panthers",
-  leftTeam: "Lions",
-  topDigits: [3, 1, 7, 2, 9, 6, 8, 5, 0, 4],
-  leftDigits: [0, 1, 2, 9, 5, 4, 7, 3, 8, 6],
-  topScore: 32,
-  leftScore: 26,
-};
+import { navigate, signOut, useAuth, usePlayer, useRoute } from "./session.ts";
+import { RULES_VERSION } from "../shared/rules.ts";
+import AdminInvites from "./screens/AdminInvites.tsx";
+import Home from "./screens/Home.tsx";
+import Join from "./screens/Join.tsx";
+import Pending from "./screens/Pending.tsx";
+import Rules from "./screens/Rules.tsx";
+import SignIn from "./screens/SignIn.tsx";
 
 export default function App() {
-  const prize = computePrize(12, 100_000);
-  const outcome = resolveWeek({
-    layout: DEFAULT_LAYOUT,
-    topDigits: SAMPLE.topDigits,
-    leftDigits: SAMPLE.leftDigits,
-    topScore: SAMPLE.topScore,
-    leftScore: SAMPLE.leftScore,
-    paidSquareIds: DEFAULT_LAYOUT.map((s) => s.id),
-    potCents: prize.potCents,
-  });
+  const route = useRoute();
+  const auth = useAuth();
+  const playerState = usePlayer(auth.user?.uid ?? null);
+  const player = playerState.loading ? null : playerState.player;
+
+  let screen;
+  if (auth.loading || (auth.user && playerState.loading)) {
+    screen = <p className="coming">Loading…</p>;
+  } else if (!auth.user) {
+    screen = <SignIn />;
+  } else if (route === "/invites" && auth.isAdmin) {
+    screen = <AdminInvites />;
+  } else if (!playerState.loading && playerState.error) {
+    screen = <p className="error">{playerState.error}</p>;
+  } else if (!player) {
+    screen = <Join suggestedName={auth.user.displayName ?? ""} />;
+  } else if (player.status === "removed") {
+    screen = (
+      <section className="card panel">
+        <h2>Not on the board</h2>
+        <p>This account was removed from Sunday Showdown. Talk to the admin.</p>
+      </section>
+    );
+  } else if (player.rulesVersion !== RULES_VERSION) {
+    screen = <Rules updated={player.rulesVersion !== null} />;
+  } else if (player.status === "pending") {
+    screen = <Pending name={player.displayName} />;
+  } else {
+    screen = <Home />;
+  }
 
   return (
     <div className="page">
       <header className="masthead">
         <p className="eyebrow">Sunday Night Football Squares</p>
         <h1 className="title">
-          Sunday <span>Showdown</span>
+          <a href="#/">
+            Sunday <span>Showdown</span>
+          </a>
         </h1>
         <p className="motto">NO PAY • NO PLAY • NO OT</p>
       </header>
 
-      <main>
-        <section className="card scoreline">
-          <div>
-            <p className="label">Sample board · 2026 Week 4</p>
-            <p className="matchup">
-              {SAMPLE.topTeam} {SAMPLE.topScore} – {SAMPLE.leftTeam} {SAMPLE.leftScore}
-            </p>
-          </div>
-          <div className="pot">
-            <p className="label">Q4 pot</p>
-            <p className="pot-amount">{formatCents(prize.potCents)}</p>
-          </div>
-        </section>
+      {auth.user && (
+        <nav className="userbar">
+          <span className="userbar-name">{player?.displayName ?? auth.user.email}</span>
+          {auth.isAdmin &&
+            (route === "/invites" ? (
+              <button className="link" onClick={() => navigate("/")}>
+                My board
+              </button>
+            ) : (
+              <button className="link" onClick={() => navigate("/invites")}>
+                Invites
+              </button>
+            ))}
+          <button className="link" onClick={() => void signOut()}>
+            Sign out
+          </button>
+        </nav>
+      )}
 
-        <Board
-          layout={DEFAULT_LAYOUT}
-          topDigits={SAMPLE.topDigits}
-          leftDigits={SAMPLE.leftDigits}
-          topTeam={SAMPLE.topTeam}
-          leftTeam={SAMPLE.leftTeam}
-          winnerSquareId={outcome.kind === "win" ? outcome.squareId : null}
-        />
-
-        <section className="card result">
-          {outcome.kind === "win" ? (
-            <p>
-              Digits {outcome.topDigit} and {outcome.leftDigit} land on{" "}
-              <strong>{outcome.label}</strong>, who wins{" "}
-              <strong>{formatCents(outcome.awardedCents)}</strong>.
-            </p>
-          ) : (
-            <p>No winner. {formatCents(outcome.rolloverOutCents)} rolls over.</p>
-          )}
-        </section>
-
-        <p className="coming">Invite-only · launching for the 2027 season</p>
-      </main>
+      <main>{screen}</main>
     </div>
   );
 }

@@ -20,6 +20,23 @@ Cloud Functions) for everything that touches money or fairness.
 The rules live in [`shared/game.ts`](shared/game.ts) and are tested against the
 group's real 2026 boards in [`shared/game.test.ts`](shared/game.test.ts).
 
+## Joining (Phase 2)
+
+1. The admin creates an invite on the **Invites** page and shares the link
+   (`…/#/join/K7QM4-XR9TB`). Each invite works once, expires after 14 days, and
+   can be locked to one email address. Only a hash of the code is stored.
+2. The player opens the link and signs in with Google or a one-tap email link
+   (no passwords).
+3. They pick the name for their square and redeem the invite. That creates
+   their player record as **pending**. Registration closes at 12 seats.
+4. They read and accept the house rules ([`shared/rules.ts`](shared/rules.ts)).
+   Changing `RULES_VERSION` sends everyone back to re-accept.
+5. They wait for the admin to approve them (Phase 3).
+
+All writes go through Cloud Functions in [`functions/src`](functions/src/index.ts);
+Firestore rules let a player read only their own record, and the admin read
+players, invitations and the audit log. Every action is written to `auditLog`.
+
 ## Develop
 
 Requires Node 22.6+.
@@ -29,6 +46,11 @@ npm install
 npm test        # game rules tests
 npm run dev     # local site at http://localhost:5173/sunday-showdown/
 npm run build
+
+# Against local emulators (needs the Firebase CLI: npm i -g firebase-tools)
+npm --prefix functions install
+npm run emulators         # terminal 1
+npm run dev:emulators     # terminal 2
 ```
 
 ## Deploy
@@ -38,10 +60,32 @@ Every push to `main` runs the tests, builds, and publishes to GitHub Pages via
 
 One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
+Cloud Functions and Firestore rules are deployed from your machine:
+
+```sh
+npm --prefix functions install
+firebase deploy --only functions,firestore
+```
+
+### One-time Firebase setup (Phase 2)
+
+1. **Plan:** Cloud Functions need the Blaze (pay-as-you-go) plan. Usage for 12
+   players stays inside the free allowance; set a budget alert anyway.
+2. **Authentication → Sign-in method:** enable **Google** and
+   **Email/Password → Email link (passwordless sign-in)**.
+3. **Authentication → Settings → Authorized domains:** add `jbravoj.github.io`.
+4. **Firestore:** create the database (production mode), then deploy as above.
+5. **Make yourself admin:** sign in on the site once, then
+   ```sh
+   gcloud auth application-default login
+   cd functions && npm run grant-admin -- you@example.com
+   ```
+   Sign out and back in; an **Invites** link appears.
+
 ## Build phases
 
 1. ✅ Project setup and deploy pipeline
-2. Invite-only registration and rules acceptance
+2. ✅ Invite-only registration and rules acceptance
 3. Admin approval and player management
 4. Permanent season squares
 5. Weekly board generation and publication

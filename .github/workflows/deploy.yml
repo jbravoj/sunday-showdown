@@ -28,6 +28,8 @@ jobs:
         run: npm test
       - name: Type-check and build
         run: npm run build
+      - name: Type-check and build Cloud Functions
+        run: npm run build:functions
       - if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
