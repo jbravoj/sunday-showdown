@@ -10,6 +10,9 @@ interface BoardProps {
   winnerSquareId?: string | null;
   /** Squares to mark NOT PAID. */
   unpaidSquareIds?: readonly string[];
+  /** Last digits of the final scores, lit up on the axes. */
+  hotTopDigit?: number | null;
+  hotLeftDigit?: number | null;
 }
 
 /** Splits "22 Adam" into ["22", "Adam"]. */
@@ -20,6 +23,7 @@ function splitLabel(label: string): [string, string] {
 
 export default function Board(props: BoardProps) {
   const { layout, topDigits, leftDigits, winnerSquareId, unpaidSquareIds = [] } = props;
+  const { hotTopDigit = null, hotLeftDigit = null } = props;
 
   // One tile per 2x2 block: the player's square, or a black block.
   const tiles = [];
@@ -53,18 +57,18 @@ export default function Board(props: BoardProps) {
 
   return (
     <div className="board-wrap">
-      <div className="team-top">{props.topTeam}</div>
+      <div className="team-top">{props.topTeam} →</div>
       <div className="board-row">
-        <div className="team-left">{props.leftTeam}</div>
+        <div className="team-left">{props.leftTeam} ←</div>
         <div className="board" role="grid" aria-label="Squares board">
           <div className="corner" />
           {topDigits.map((d, i) => (
-            <div key={`t${i}`} className="digit" style={{ gridRow: 1, gridColumn: 2 + i }}>
+            <div key={`t${i}`} className={d === hotTopDigit ? "digit digit-hot" : "digit"} style={{ gridRow: 1, gridColumn: 2 + i }}>
               {d}
             </div>
           ))}
           {leftDigits.map((d, i) => (
-            <div key={`l${i}`} className="digit" style={{ gridRow: 2 + i, gridColumn: 1 }}>
+            <div key={`l${i}`} className={d === hotLeftDigit ? "digit digit-hot" : "digit"} style={{ gridRow: 2 + i, gridColumn: 1 }}>
               {d}
             </div>
           ))}

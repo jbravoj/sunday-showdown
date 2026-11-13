@@ -119,7 +119,7 @@ export default function AdminInvites() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
-          <button className="btn btn-gold" disabled={busy} type="submit">
+          <button className="btn btn-primary" disabled={busy} type="submit">
             {busy ? "Creating…" : "Create invite link"}
           </button>
         </form>

@@ -142,7 +142,7 @@ export default function AdminPlayers({ myUid }: { myUid: string }) {
                             value={editing.name}
                             onChange={(e) => setEditing({ uid: p.uid, name: e.target.value })}
                           />
-                          <button className="btn btn-small btn-gold" disabled={busy} type="submit">
+                          <button className="btn btn-small btn-primary" disabled={busy} type="submit">
                             Save
                           </button>
                           <button
@@ -184,7 +184,7 @@ export default function AdminPlayers({ myUid }: { myUid: string }) {
                     <div className="player-actions">
                       {status === "pending" && (
                         <button
-                          className="btn btn-small btn-gold"
+                          className="btn btn-small btn-primary"
                           disabled={busy || !rulesOk}
                           onClick={() => act(p.uid, "approve")}
                         >

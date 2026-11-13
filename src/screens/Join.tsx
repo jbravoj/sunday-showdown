@@ -70,7 +70,7 @@ export default function Join({ suggestedName }: { suggestedName: string }) {
           />
           <span className="hint">Up to {DISPLAY_NAME_MAX} characters. Emoji welcome.</span>
         </label>
-        <button className="btn btn-gold" disabled={busy} type="submit">
+        <button className="btn btn-primary" disabled={busy} type="submit">
           {busy ? "Joining…" : "Join Sunday Showdown"}
         </button>
       </form>
