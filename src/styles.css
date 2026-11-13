@@ -259,27 +259,6 @@ body {
   grid-column: 1;
 }
 
-/* ---- Masthead link + user bar ---- */
-.title a {
-  color: inherit;
-  text-decoration: none;
-}
-.userbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-.userbar-name {
-  margin-right: auto;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .link {
   padding: 4px 0;
   border: 0;
@@ -603,4 +582,117 @@ details.panel .rules {
   .player-actions {
     justify-content: flex-end;
   }
+}
+
+/* ---- Top bar ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.wordmark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: inherit;
+  text-decoration: none;
+}
+.wordmark .title {
+  display: block;
+  margin: 0;
+  font-size: clamp(1.8rem, 8vw, 2.4rem);
+}
+.page > .motto {
+  margin: 8px 0 16px;
+}
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.menu {
+  position: relative;
+}
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+.menu-sheet {
+  position: absolute;
+  right: 0;
+  top: 52px;
+  z-index: 21;
+  width: 240px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+.menu-sheet .hint {
+  margin-bottom: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-name {
+  margin: 0 0 2px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+}
+
+/* ---- Bottom tab bar ---- */
+.page-tabs {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  border-top: 1px solid var(--line);
+  background: rgba(15, 30, 24, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+}
+.tabbar-inner {
+  display: grid;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  border-radius: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab-active,
+.tab-active:hover {
+  color: var(--accent);
 }
