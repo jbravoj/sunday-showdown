@@ -121,7 +121,7 @@ export default function SignIn() {
           </label>
         )}
 
-        <button className="btn btn-gold" disabled={busy} type="submit">
+        <button className="btn btn-primary" disabled={busy} type="submit">
           {busy
             ? "One sec…"
             : mode === "signin"

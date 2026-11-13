@@ -29,14 +29,20 @@ export default function Home() {
     <>
       <section className="card scoreline">
         <div>
-          <p className="label">Sample board · 2026 Week 4</p>
+          <p className="label">Sample · 2026 Week 4 · Final</p>
           <p className="matchup">
-            {SAMPLE.topTeam} {SAMPLE.topScore} – {SAMPLE.leftTeam} {SAMPLE.leftScore}
+            {SAMPLE.topTeam} {SAMPLE.topScore}
+          </p>
+          <p className="matchup">
+            {SAMPLE.leftTeam} {SAMPLE.leftScore}
           </p>
         </div>
         <div className="pot">
-          <p className="label">Q4 pot</p>
+          <p className="label">Pot</p>
           <p className="pot-amount">{formatCents(prize.potCents)}</p>
+          {prize.rolloverInCents > 0 && (
+            <p className="pot-note">incl. {formatCents(prize.rolloverInCents)} rollover</p>
+          )}
         </div>
       </section>
 
@@ -47,6 +53,8 @@ export default function Home() {
         topTeam={SAMPLE.topTeam}
         leftTeam={SAMPLE.leftTeam}
         winnerSquareId={outcome.kind === "win" ? outcome.squareId : null}
+        hotTopDigit={outcome.topDigit}
+        hotLeftDigit={outcome.leftDigit}
       />
 
       <section className="card result">

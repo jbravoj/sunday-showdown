@@ -52,7 +52,7 @@ export default function Rules({ updated }: { updated: boolean }) {
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
         <span>I've read the rules and I'm in for the whole season.</span>
       </label>
-      <button className="btn btn-gold" disabled={!agreed || busy} onClick={accept}>
+      <button className="btn btn-primary" disabled={!agreed || busy} onClick={accept}>
         {busy ? "Saving…" : "Accept rules"}
       </button>
       {error && <p className="error">{error}</p>}
