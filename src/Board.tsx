@@ -2,8 +2,9 @@ import type { Layout } from "../shared/game.ts";
 
 interface BoardProps {
   layout: Layout;
-  topDigits: readonly number[];
-  leftDigits: readonly number[];
+  /** Axis numbers; null shows "?" (not drawn yet). */
+  topDigits: readonly (number | null)[];
+  leftDigits: readonly (number | null)[];
   topTeam: string;
   leftTeam: string;
   /** Square to highlight as the winner, if any. */
@@ -13,6 +14,10 @@ interface BoardProps {
   /** Last digits of the final scores, lit up on the axes. */
   hotTopDigit?: number | null;
   hotLeftDigit?: number | null;
+  /** The signed-in player's square, outlined. */
+  mySquareId?: string | null;
+  /** Squares nobody sits in, dimmed. */
+  openSquareIds?: readonly string[];
 }
 
 /** Splits "22 Adam" into ["22", "Adam"]. */
@@ -23,7 +28,7 @@ function splitLabel(label: string): [string, string] {
 
 export default function Board(props: BoardProps) {
   const { layout, topDigits, leftDigits, winnerSquareId, unpaidSquareIds = [] } = props;
-  const { hotTopDigit = null, hotLeftDigit = null } = props;
+  const { hotTopDigit = null, hotLeftDigit = null, mySquareId = null, openSquareIds = [] } = props;
 
   // One tile per 2x2 block: the player's square, or a black block.
   const tiles = [];
@@ -40,16 +45,19 @@ export default function Board(props: BoardProps) {
       const [num, name] = splitLabel(square.label);
       const isWinner = square.id === winnerSquareId;
       const isUnpaid = unpaidSquareIds.includes(square.id);
+      const isMine = square.id === mySquareId;
+      const isOpen = openSquareIds.includes(square.id);
       tiles.push(
         <div
           key={square.id}
-          className={`tile tile-player${isWinner ? " tile-winner" : ""}${isUnpaid ? " tile-unpaid" : ""}`}
+          className={`tile tile-player${isWinner ? " tile-winner" : ""}${isUnpaid ? " tile-unpaid" : ""}${isMine ? " tile-mine" : ""}${isOpen ? " tile-open" : ""}`}
           style={style}
         >
           <span className="tile-num">{num}.</span>
           <span className="tile-name">{name}</span>
           {isUnpaid && <span className="tile-flag">NOT PAID</span>}
           {isWinner && <span className="tile-flag tile-flag-win">WINNER</span>}
+          {isMine && !isWinner && !isUnpaid && <span className="tile-flag tile-flag-mine">YOU</span>}
         </div>,
       );
     }
@@ -63,13 +71,13 @@ export default function Board(props: BoardProps) {
         <div className="board" role="grid" aria-label="Squares board">
           <div className="corner" />
           {topDigits.map((d, i) => (
-            <div key={`t${i}`} className={d === hotTopDigit ? "digit digit-hot" : "digit"} style={{ gridRow: 1, gridColumn: 2 + i }}>
-              {d}
+            <div key={`t${i}`} className={d !== null && d === hotTopDigit ? "digit digit-hot" : "digit"} style={{ gridRow: 1, gridColumn: 2 + i }}>
+              {d ?? "?"}
             </div>
           ))}
           {leftDigits.map((d, i) => (
-            <div key={`l${i}`} className={d === hotLeftDigit ? "digit digit-hot" : "digit"} style={{ gridRow: 2 + i, gridColumn: 1 }}>
-              {d}
+            <div key={`l${i}`} className={d !== null && d === hotLeftDigit ? "digit digit-hot" : "digit"} style={{ gridRow: 2 + i, gridColumn: 1 }}>
+              {d ?? "?"}
             </div>
           ))}
           {tiles}

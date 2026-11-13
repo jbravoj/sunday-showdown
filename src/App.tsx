@@ -55,7 +55,7 @@ export default function App() {
       </section>
     );
   } else {
-    screen = <Home />;
+    screen = <Home uid={auth.user.uid} />;
   }
 
   return (

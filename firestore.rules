@@ -11,6 +11,10 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn() && request.auth.token.admin == true;
     }
+    function isApprovedPlayer() {
+      return signedIn()
+        && get(/databases/$(database)/documents/players/$(request.auth.uid)).data.status == "approved";
+    }
 
     // A player can read their own record; the admin can read everyone's.
     match /players/{uid} {
@@ -22,6 +26,12 @@ service cloud.firestore {
     // Stored under a hash of the code; only the admin can list them.
     match /invitations/{id} {
       allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // The season's squares (who sits where): approved players and the admin.
+    match /seasons/{season} {
+      allow read: if isAdmin() || isApprovedPlayer();
       allow write: if false;
     }
 
