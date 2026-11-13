@@ -57,7 +57,7 @@ export default function App() {
             Sunday <span>Showdown</span>
           </a>
         </h1>
-        <p className="motto">NO PAY • NO PLAY • NO OT</p>
+        {auth.user && <p className="motto">NO PAY • NO PLAY • NO OT</p>}
       </header>
 
       {auth.user && (
