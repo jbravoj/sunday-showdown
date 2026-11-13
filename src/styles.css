@@ -238,3 +238,228 @@ body {
   grid-row: 1;
   grid-column: 1;
 }
+
+/* ---- Masthead link + user bar ---- */
+.title a {
+  color: inherit;
+  text-decoration: none;
+}
+.userbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.userbar-name {
+  margin-right: auto;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--gold-hi);
+  cursor: pointer;
+}
+
+/* ---- Panels and forms ---- */
+.panel {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.panel h2 {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.panel > p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.panel summary {
+  font-family: var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* stops iOS zooming in on focus */
+}
+.input:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.input-code {
+  font-family: var(--display);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--navy);
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-gold {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  color: var(--tile-ink);
+  font-weight: 700;
+}
+.btn-ghost {
+  background: transparent;
+}
+.btn-small {
+  width: auto;
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+.divider {
+  margin: 16px 0 12px !important;
+  text-align: center;
+  font-size: 0.8rem;
+}
+.hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.error {
+  margin: 12px 0 0;
+  color: var(--red);
+  font-size: 0.9rem;
+}
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 16px 0;
+  line-height: 1.4;
+}
+.check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--gold);
+}
+
+/* ---- Rules ---- */
+.rules {
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 4px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.panel details .rules,
+details.panel .rules {
+  margin-top: 12px;
+}
+.rules-section h3 {
+  margin: 14px 0 6px;
+  font-family: var(--display);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold-hi);
+}
+.rules-section ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+.rules-section li + li {
+  margin-top: 4px;
+}
+.rules > .hint {
+  margin: 14px 0 10px;
+}
+
+/* ---- Admin invites ---- */
+.invite-created {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px dashed var(--gold);
+  border-radius: 10px;
+  text-align: center;
+}
+.invite-code {
+  margin: 6px 0;
+  font-family: var(--display);
+  font-size: 1.8rem;
+  letter-spacing: 0.15em;
+  color: var(--gold-hi);
+}
+.invite-link {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+.invite-created .hint {
+  margin-top: 10px;
+}
+.invite-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.invite-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.invite-list p {
+  margin: 0;
+}
+.invite-who {
+  font-weight: 600;
+}
+.invite-closed {
+  opacity: 0.55;
+}
