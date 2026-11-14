@@ -1,5 +1,6 @@
 import { useAuth, usePlayer, useRoute } from "./session.ts";
-import { TabBar, TopBar } from "./Nav.tsx";
+import { AdminSubnav, TabBar, TopBar } from "./Nav.tsx";
+import AdminWeeks from "./screens/AdminWeeks.tsx";
 import { RULES_VERSION } from "../shared/rules.ts";
 import AdminInvites from "./screens/AdminInvites.tsx";
 import AdminPlayers from "./screens/AdminPlayers.tsx";
@@ -20,10 +21,27 @@ export default function App() {
     screen = <p className="coming">Loading…</p>;
   } else if (!auth.user) {
     screen = <SignIn />;
+  } else if (route === "/weeks" && auth.isAdmin) {
+    screen = (
+      <>
+        <AdminSubnav route={route} />
+        <AdminWeeks />
+      </>
+    );
   } else if (route === "/invites" && auth.isAdmin) {
-    screen = <AdminInvites />;
+    screen = (
+      <>
+        <AdminSubnav route={route} />
+        <AdminInvites />
+      </>
+    );
   } else if (route === "/players" && auth.isAdmin) {
-    screen = <AdminPlayers myUid={auth.user.uid} />;
+    screen = (
+      <>
+        <AdminSubnav route={route} />
+        <AdminPlayers myUid={auth.user.uid} />
+      </>
+    );
   } else if (!playerState.loading && playerState.error) {
     screen = <p className="error">{playerState.error}</p>;
   } else if (!player) {

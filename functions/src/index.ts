@@ -34,6 +34,9 @@ import {
   vacate,
   type SquareOp,
 } from "../../shared/season.ts";
+import { shuffleDigits } from "../../shared/game.ts";
+import { findSundayNightGame, parseScoreboard, scoreboardUrl, type Team } from "../../shared/schedule.ts";
+import { checkWeekOp, isValidWeek, weekId, type WeekOp, type WeekStatus } from "../../shared/week.ts";
 
 initializeApp();
 // invoker "public": callable functions must be reachable from the site; each
@@ -426,6 +429,139 @@ export const manageSquares = onCall(async (req) => {
     );
     audit(tx, admin.uid, `squares.${op.op}`, seasonRef, { ...op, summary: result.summary });
     return result.summary;
+  });
+
+  return { ok: true, summary };
+});
+
+// ---------- admin: weekly boards ----------
+
+function teamArg(value: unknown, field: string): Team {
+  const name = str(value, field, 40).trim();
+  if (!name) throw new HttpsError("invalid-argument", `${field} is required.`);
+  const short = name.split(" ").pop() ?? name;
+  return { name, short, abbr: "" };
+}
+
+/**
+ * Admin sets up and runs a week's board.
+ *   fetch   – pull the Sunday night matchup from ESPN's schedule (home team on top)
+ *   manual  – type the matchup in (fallback when the feed has nothing)
+ *   publish – show the board to players (numbers still hidden)
+ *   lock    – draw both rows of numbers and freeze who sits where; permanent
+ *   delete  – remove a board that isn't locked
+ */
+export const manageWeek = onCall({ timeoutSeconds: 30 }, async (req) => {
+  const admin = requireAdmin(req);
+  const data = (req.data ?? {}) as Record<string, unknown>;
+  const week = data.week;
+  if (!isValidWeek(week)) throw new HttpsError("invalid-argument", "Pick a week from 1 to 18.");
+  const op = data.op;
+  const ref = seasonRef.collection("weeks").doc(weekId(week));
+
+  if (op === "fetch" || op === "manual") {
+    let matchup: { home: Team; away: Team; kickoff: Timestamp; gameId: string | null; source: string };
+    if (op === "fetch") {
+      // Testing only: borrow a past season's schedule before the real one is out.
+      const year = data.scheduleYear === undefined ? CURRENT_SEASON : String(data.scheduleYear);
+      if (!/^20\d\d$/.test(year)) throw new HttpsError("invalid-argument", "Bad schedule year.");
+      let json: unknown;
+      try {
+        const res = await fetch(scoreboardUrl(year, week), { signal: AbortSignal.timeout(10_000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        json = await res.json();
+      } catch (err) {
+        throw new HttpsError("unavailable", `Couldn't reach the NFL schedule (${String(err)}). Try again or enter the teams by hand.`);
+      }
+      const game = findSundayNightGame(parseScoreboard(json));
+      if (!game) {
+        throw new HttpsError(
+          "not-found",
+          `No Sunday night game found for week ${week} of ${year} yet. Enter the teams by hand.`,
+        );
+      }
+      matchup = {
+        home: game.home,
+        away: game.away,
+        kickoff: Timestamp.fromDate(new Date(game.kickoff)),
+        gameId: game.id,
+        source: year === CURRENT_SEASON ? "espn" : `espn-${year}`,
+      };
+    } else {
+      const kickoffMs = Date.parse(str(data.kickoff, "Kickoff", 40));
+      if (Number.isNaN(kickoffMs)) throw new HttpsError("invalid-argument", "Kickoff time isn't valid.");
+      matchup = {
+        home: teamArg(data.home, "Home team"),
+        away: teamArg(data.away, "Away team"),
+        kickoff: Timestamp.fromMillis(kickoffMs),
+        gameId: null,
+        source: "manual",
+      };
+    }
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const status = snap.exists ? (snap.get("status") as WeekStatus) : null;
+      const check = checkWeekOp(status, "setMatchup");
+      if (!check.ok) throw new HttpsError("failed-precondition", check.error);
+      tx.set(
+        ref,
+        {
+          week,
+          season: CURRENT_SEASON,
+          ...matchup,
+          status: status ?? "draft",
+          updatedAt: FieldValue.serverTimestamp(),
+          ...(snap.exists
+            ? {}
+            : { createdAt: FieldValue.serverTimestamp(), topDigits: null, leftDigits: null, squares: null }),
+        },
+        { merge: true },
+      );
+      audit(tx, admin.uid, "week.setMatchup", ref, {
+        week,
+        home: matchup.home.name,
+        away: matchup.away.name,
+        source: matchup.source,
+      });
+    });
+    return { ok: true, summary: `Week ${week}: ${matchup.away.short} at ${matchup.home.short}.` };
+  }
+
+  if (op !== "publish" && op !== "lock" && op !== "delete") {
+    throw new HttpsError("invalid-argument", "Unknown operation.");
+  }
+
+  const summary = await db.runTransaction(async (tx) => {
+    const [snap, season] = await Promise.all([tx.get(ref), tx.get(seasonRef)]);
+    const status = snap.exists ? (snap.get("status") as WeekStatus) : null;
+    const check = checkWeekOp(status, op as WeekOp);
+    if (!check.ok) throw new HttpsError("failed-precondition", check.error);
+
+    if (op === "publish") {
+      tx.update(ref, { status: "open", publishedAt: FieldValue.serverTimestamp() });
+      audit(tx, admin.uid, "week.publish", ref, { week });
+      return `Week ${week} is live for players.`;
+    }
+    if (op === "delete") {
+      tx.delete(ref);
+      audit(tx, admin.uid, "week.delete", ref, { week });
+      return `Deleted the week ${week} board.`;
+    }
+    // lock: draw numbers on the server and freeze the squares as they are right now.
+    const topDigits = shuffleDigits(randomInt);
+    const leftDigits = shuffleDigits(randomInt);
+    const squares = normalizeSquares(season.get("squares"));
+    tx.update(ref, {
+      status: "locked",
+      topDigits,
+      leftDigits,
+      squares,
+      lockedAt: FieldValue.serverTimestamp(),
+      lockedBy: admin.uid,
+    });
+    audit(tx, admin.uid, "week.lock", ref, { week, topDigits, leftDigits });
+    return `Week ${week} is locked and the numbers are drawn.`;
   });
 
   return { ok: true, summary };

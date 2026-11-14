@@ -70,10 +70,40 @@ const PLAYER_TABS: Tab[] = [
   { path: "/rules", label: "Rules", icon: "rules" },
 ];
 
-const ADMIN_TABS: Tab[] = [
-  { path: "/players", label: "Players", icon: "players" },
-  { path: "/invites", label: "Invites", icon: "invites" },
+const ADMIN_TAB: Tab = { path: "/weeks", label: "Admin", icon: "players" };
+
+/** Admin pages, reached from the one Admin tab. */
+export const ADMIN_PAGES = [
+  { path: "/weeks", label: "Weeks" },
+  { path: "/players", label: "Players" },
+  { path: "/invites", label: "Invites" },
 ];
+
+export function isAdminRoute(route: string): boolean {
+  return ADMIN_PAGES.some((p) => p.path === route);
+}
+
+/** Segmented control across the top of every admin page. */
+export function AdminSubnav({ route }: { route: string }) {
+  return (
+    <nav className="subnav" aria-label="Admin">
+      {ADMIN_PAGES.map((p) => (
+        <a
+          key={p.path}
+          href={`#${p.path}`}
+          className={route === p.path ? "subnav-item subnav-active" : "subnav-item"}
+          aria-current={route === p.path ? "page" : undefined}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate(p.path);
+          }}
+        >
+          {p.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
 
 /** Wordmark on the left; when signed in, a menu button with the account and Sign out. */
 export function TopBar(props: { signedIn: boolean; name: string | null; email: string | null }) {
@@ -127,12 +157,12 @@ export function TopBar(props: { signedIn: boolean; name: string | null; email: s
 
 /** Thumb-reach tab bar fixed to the bottom of the screen. */
 export function TabBar({ route, isAdmin }: { route: string; isAdmin: boolean }) {
-  const tabs = isAdmin ? [...PLAYER_TABS, ...ADMIN_TABS] : PLAYER_TABS;
+  const tabs = isAdmin ? [...PLAYER_TABS, ADMIN_TAB] : PLAYER_TABS;
   return (
     <nav className="tabbar" aria-label="Main">
       <div className="tabbar-inner" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
         {tabs.map((tab) => {
-          const active = route === tab.path;
+          const active = tab === ADMIN_TAB ? isAdminRoute(route) : route === tab.path;
           return (
             <a
               key={tab.path}
