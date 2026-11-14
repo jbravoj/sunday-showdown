@@ -9,6 +9,7 @@ import {
   Timestamp,
   getFirestore,
   type DocumentReference,
+  type DocumentSnapshot,
   type Transaction,
 } from "firebase-admin/firestore";
 import { setGlobalOptions } from "firebase-functions/v2";
@@ -36,7 +37,18 @@ import {
 } from "../../shared/season.ts";
 import { shuffleDigits } from "../../shared/game.ts";
 import { findSundayNightGame, parseScoreboard, scoreboardUrl, type Team } from "../../shared/schedule.ts";
-import { checkWeekOp, isValidWeek, weekId, type WeekOp, type WeekStatus } from "../../shared/week.ts";
+import {
+  checkWeekOp,
+  isLockDue,
+  isValidWeek,
+  lockSnapshot,
+  weekId,
+  type Payments,
+  type WeekOp,
+  type WeekStatus,
+} from "../../shared/week.ts";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { logger } from "firebase-functions/v2";
 
 initializeApp();
 // invoker "public": callable functions must be reachable from the site; each
@@ -436,6 +448,45 @@ export const manageSquares = onCall(async (req) => {
 
 // ---------- admin: weekly boards ----------
 
+/**
+ * Locks a board inside a transaction: draws both rows of numbers on the
+ * server, and freezes who sits where, who paid and the prize. Permanent.
+ * `actor` is the admin's uid, or "system" for the auto-lock job.
+ */
+function lockInTx(
+  tx: Transaction,
+  ref: DocumentReference,
+  weekSnap: DocumentSnapshot,
+  seasonSnap: DocumentSnapshot,
+  actor: string,
+): void {
+  const topDigits = shuffleDigits(randomInt);
+  const leftDigits = shuffleDigits(randomInt);
+  const squares = normalizeSquares(seasonSnap.get("squares"));
+  const payments = (weekSnap.get("payments") ?? {}) as Payments;
+  const rolloverInCents = Number(weekSnap.get("rolloverInCents") ?? 0); // Phase 7 fills this in
+  const snapshot = lockSnapshot(squares, payments, rolloverInCents);
+  const wasDraft = weekSnap.get("status") === "draft";
+  tx.update(ref, {
+    status: "locked",
+    topDigits,
+    leftDigits,
+    squares,
+    paidSquareIds: snapshot.paidSquareIds,
+    prize: snapshot.prize,
+    lockedAt: FieldValue.serverTimestamp(),
+    lockedBy: actor,
+    ...(wasDraft ? { publishedAt: FieldValue.serverTimestamp() } : {}),
+  });
+  audit(tx, actor, "week.lock", ref, {
+    week: weekSnap.get("week"),
+    topDigits,
+    leftDigits,
+    paidSquareIds: snapshot.paidSquareIds,
+    potCents: snapshot.prize.potCents,
+  });
+}
+
 function teamArg(value: unknown, field: string): Team {
   const name = str(value, field, 40).trim();
   if (!name) throw new HttpsError("invalid-argument", `${field} is required.`);
@@ -548,21 +599,64 @@ export const manageWeek = onCall({ timeoutSeconds: 30 }, async (req) => {
       audit(tx, admin.uid, "week.delete", ref, { week });
       return `Deleted the week ${week} board.`;
     }
-    // lock: draw numbers on the server and freeze the squares as they are right now.
-    const topDigits = shuffleDigits(randomInt);
-    const leftDigits = shuffleDigits(randomInt);
-    const squares = normalizeSquares(season.get("squares"));
-    tx.update(ref, {
-      status: "locked",
-      topDigits,
-      leftDigits,
-      squares,
-      lockedAt: FieldValue.serverTimestamp(),
-      lockedBy: admin.uid,
-    });
-    audit(tx, admin.uid, "week.lock", ref, { week, topDigits, leftDigits });
+    lockInTx(tx, ref, snap, season, admin.uid);
     return `Week ${week} is locked and the numbers are drawn.`;
   });
 
   return { ok: true, summary };
 });
+
+/** Admin marks a player paid or not paid for a week. Freezes when the board locks. */
+export const setPayment = onCall(async (req) => {
+  const admin = requireAdmin(req);
+  const data = (req.data ?? {}) as Record<string, unknown>;
+  if (!isValidWeek(data.week)) throw new HttpsError("invalid-argument", "Pick a week from 1 to 18.");
+  const week = data.week;
+  const uid = playerId(data.uid);
+  if (typeof data.paid !== "boolean") throw new HttpsError("invalid-argument", "paid must be true or false.");
+  const paid = data.paid;
+  const ref = seasonRef.collection("weeks").doc(weekId(week));
+
+  const summary = await db.runTransaction(async (tx) => {
+    const [snap, season] = await Promise.all([tx.get(ref), tx.get(seasonRef)]);
+    if (!snap.exists) throw new HttpsError("not-found", `Set up week ${week} first.`);
+    if (snap.get("status") === "locked") {
+      throw new HttpsError("failed-precondition", "This board is locked; payments are final.");
+    }
+    const seat = Object.values(normalizeSquares(season.get("squares"))).find((s) => s?.uid === uid);
+    if (!seat) throw new HttpsError("failed-precondition", "That player doesn't have a square.");
+    tx.update(ref, { [`payments.${uid}`]: paid, updatedAt: FieldValue.serverTimestamp() });
+    audit(tx, admin.uid, "payment.set", ref, { week, uid, name: seat.name, paid });
+    return `${seat.name}: ${paid ? "paid" : "not paid"} for week ${week}.`;
+  });
+
+  return { ok: true, summary };
+});
+
+/**
+ * Every 5 minutes: lock any board whose kickoff is 30 minutes away or less.
+ * A board still in draft locks too (and becomes visible), so a forgotten
+ * publish can't stall the week.
+ */
+export const autoLockBoards = onSchedule(
+  { schedule: "every 5 minutes", timeZone: "America/Chicago", retryCount: 1 },
+  async () => {
+    const pending = await seasonRef.collection("weeks").where("status", "in", ["draft", "open"]).get();
+    const now = Date.now();
+    for (const doc of pending.docs) {
+      const kickoff = doc.get("kickoff") as Timestamp | undefined;
+      if (!kickoff || !isLockDue(doc.get("status") as WeekStatus, kickoff.toMillis(), now)) continue;
+      try {
+        await db.runTransaction(async (tx) => {
+          const [snap, season] = await Promise.all([tx.get(doc.ref), tx.get(seasonRef)]);
+          // Re-check inside the transaction: the admin may have just locked it.
+          if (!snap.exists || snap.get("status") === "locked") return;
+          lockInTx(tx, doc.ref, snap, season, "system");
+        });
+        logger.info(`Auto-locked ${doc.id}`);
+      } catch (err) {
+        logger.error(`Auto-lock failed for ${doc.id}`, err);
+      }
+    }
+  },
+);

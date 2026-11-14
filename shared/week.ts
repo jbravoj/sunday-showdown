@@ -7,6 +7,8 @@
 // Phase 6 adds payments and locks boards automatically; Phase 7 adds scores.
 
 import { REGULAR_SEASON_WEEKS } from "./schedule.ts";
+import { computePrize, type PrizeBreakdown } from "./game.ts";
+import { SQUARE_IDS, type Squares } from "./season.ts";
 
 export type WeekStatus = "draft" | "open" | "locked";
 
@@ -41,4 +43,41 @@ export function checkWeekOp(status: WeekStatus | null, op: WeekOp): { ok: true }
         ? { ok: false, error: "Locked boards are part of the record and can't be deleted." }
         : { ok: true };
   }
+}
+
+// ---------- payments and locking (Phase 6) ----------
+
+
+/** Boards lock themselves this long before kickoff. */
+export const LOCK_LEAD_MINUTES = 30;
+
+export function lockDueMs(kickoffMs: number): number {
+  return kickoffMs - LOCK_LEAD_MINUTES * 60_000;
+}
+
+/** Should the auto-lock job lock this board now? Drafts lock too, so a forgotten publish can't stall a week. */
+export function isLockDue(status: WeekStatus, kickoffMs: number, nowMs: number): boolean {
+  return status !== "locked" && nowMs >= lockDueMs(kickoffMs);
+}
+
+/** Payments for a week: uid → paid. Keyed by player, so swapping squares keeps who paid. */
+export type Payments = Readonly<Record<string, boolean>>;
+
+/** Squares whose current occupant has paid. */
+export function paidSquareIds(squares: Squares, payments: Payments): string[] {
+  return SQUARE_IDS.filter((id) => {
+    const seat = squares[id];
+    return seat !== null && payments[seat.uid] === true;
+  });
+}
+
+/** Everything frozen onto a board at lock time. */
+export interface LockSnapshot {
+  paidSquareIds: string[];
+  prize: PrizeBreakdown;
+}
+
+export function lockSnapshot(squares: Squares, payments: Payments, rolloverInCents: number): LockSnapshot {
+  const paid = paidSquareIds(squares, payments);
+  return { paidSquareIds: paid, prize: computePrize(paid.length, rolloverInCents) };
 }

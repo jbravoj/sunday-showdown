@@ -969,3 +969,54 @@ details.panel .rules {
   cursor: pointer;
   margin-bottom: 12px;
 }
+
+/* ---- Payments ---- */
+.status-line {
+  margin: -4px 0 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+.paid-pill {
+  display: inline-block;
+  margin-top: 6px !important;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.paid-yes {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.paid-no {
+  border: 1px solid #f0b45a;
+  color: #f0b45a;
+}
+.pay-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pay-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.pay-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.pay-list .paid-pill {
+  margin-top: 0 !important;
+}
+.pay-btn {
+  min-width: 104px;
+}

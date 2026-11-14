@@ -1,6 +1,6 @@
 import Board from "../Board.tsx";
 import { useState } from "react";
-import WeekView from "../WeekView.tsx";
+import WeekView, { weekFigures } from "../WeekView.tsx";
 import { useSeason, useWeeks } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
 import { computePrize, formatCents, resolveWeek } from "../../shared/game.ts";
@@ -31,6 +31,10 @@ export default function Home({ uid }: { uid: string }) {
   const filled = SQUARE_IDS.filter((id) => squares[id] !== null).length;
   const open = SQUARE_IDS.filter((id) => squares[id] === null);
   const mine = squareOf(squares, uid);
+  // Paid status for the week on screen (frozen once it locks).
+  const fig = current ? weekFigures(current, squares) : null;
+  const weekSquare = fig ? squareOf(fig.squares, uid) : null;
+  const paidThisWeek = fig && weekSquare ? fig.paid.includes(weekSquare) : null;
 
   return (
     <>
@@ -93,6 +97,11 @@ export default function Home({ uid }: { uid: string }) {
               <p className="matchup">
                 {squareNumber(mine)} · {squares[mine]!.name}
               </p>
+              {current && paidThisWeek !== null && (
+                <p className={paidThisWeek ? "paid-pill paid-yes" : "paid-pill paid-no"}>
+                  Week {current.week}: {paidThisWeek ? "Paid" : "Not paid"}
+                </p>
+              )}
               <p className="hint">
                 Row {SQUARE_BLOCKS[mine].row + 1}, column {SQUARE_BLOCKS[mine].col + 1} on the
                 board. It's yours all season.
