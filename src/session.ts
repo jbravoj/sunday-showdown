@@ -8,10 +8,12 @@ import {
   signOut as fbSignOut,
   type User,
 } from "firebase/auth";
-import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, where, type Timestamp } from "firebase/firestore";
 import { auth, db } from "./firebase.ts";
 import { normalizeInviteCode, type PlayerStatus } from "../shared/invite.ts";
 import { CURRENT_SEASON, normalizeSquares, type Seat } from "../shared/season.ts";
+import type { Team } from "../shared/schedule.ts";
+import type { WeekStatus } from "../shared/week.ts";
 
 // ---------- local storage (wrapped: storage can throw in private modes) ----------
 
@@ -207,4 +209,65 @@ export function useSeason(enabled: boolean): SeasonState {
     );
   }, [enabled]);
   return state;
+}
+
+// ---------- weekly boards ----------
+
+export interface WeekBoard {
+  id: string;
+  week: number;
+  status: WeekStatus;
+  home: Team;
+  away: Team;
+  kickoff: Timestamp;
+  source: string;
+  /** Drawn at lock; null before. */
+  topDigits: number[] | null;
+  leftDigits: number[] | null;
+  /** Who sat where when the board locked; null before. */
+  squares: Record<string, Seat | null> | null;
+}
+
+export type WeeksState =
+  | { loading: true }
+  | { loading: false; weeks: WeekBoard[]; error: string | null };
+
+/**
+ * Live list of this season's weekly boards, sorted by week. The admin sees
+ * drafts too; players only see published boards.
+ */
+export function useWeeks(includeDrafts: boolean): WeeksState {
+  const [state, setState] = useState<WeeksState>({ loading: true });
+  useEffect(() => {
+    const col = collection(db, "seasons", CURRENT_SEASON, "weeks");
+    const q = includeDrafts ? col : query(col, where("status", "in", ["open", "locked"]));
+    return onSnapshot(
+      q,
+      (snap) =>
+        setState({
+          loading: false,
+          error: null,
+          weeks: snap.docs
+            .map((d) => {
+              const w = d.data();
+              return {
+                ...(w as Omit<WeekBoard, "id" | "squares">),
+                id: d.id,
+                squares: w.squares ? normalizeSquares(w.squares) : null,
+              };
+            })
+            .sort((a, b) => a.week - b.week),
+        }),
+      (err) => setState({ loading: false, weeks: [], error: err.message }),
+    );
+  }, [includeDrafts]);
+  return state;
+}
+
+/** "Sun, Nov 15 · 7:20 PM" in the viewer's own time zone. */
+export function kickoffLabel(kickoff: Timestamp): string {
+  const d = kickoff.toDate();
+  const day = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  return `${day} · ${time}`;
 }

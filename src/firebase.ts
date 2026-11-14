@@ -53,6 +53,12 @@ export const api = {
     { op: "draw" } | { op: "clear"; squareId: string } | { op: "place"; squareId: string; uid: string },
     { ok: true; summary: string }
   >("manageSquares"),
+  manageWeek: callable<
+    | { op: "fetch"; week: number; scheduleYear?: number }
+    | { op: "manual"; week: number; home: string; away: string; kickoff: string }
+    | { op: "publish" | "lock" | "delete"; week: number },
+    { ok: true; summary: string }
+  >("manageWeek"),
 };
 
 /** Human-readable message from a Firebase or other error. */

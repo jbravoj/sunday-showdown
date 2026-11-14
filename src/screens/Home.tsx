@@ -1,5 +1,7 @@
 import Board from "../Board.tsx";
-import { useSeason } from "../session.ts";
+import { useState } from "react";
+import WeekView from "../WeekView.tsx";
+import { useSeason, useWeeks } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
 import { computePrize, formatCents, resolveWeek } from "../../shared/game.ts";
 import {
@@ -16,44 +18,72 @@ const NO_DIGITS = Array.from({ length: 10 }, () => null);
 /** Approved players' home: the season board with everyone's permanent square. */
 export default function Home({ uid }: { uid: string }) {
   const season = useSeason(true);
+  const weeksState = useWeeks(false);
+  const [picked, setPicked] = useState<number | null>(null);
 
-  if (season.loading) return <p className="coming">Loading…</p>;
+  if (season.loading || weeksState.loading) return <p className="coming">Loading…</p>;
   if (season.error) return <p className="error">{season.error}</p>;
 
   const { squares } = season;
+  const weeks = weeksState.weeks;
+  // Latest published week by default; players can flip back to earlier ones.
+  const current = weeks.find((w) => w.week === picked) ?? weeks[weeks.length - 1] ?? null;
   const filled = SQUARE_IDS.filter((id) => squares[id] !== null).length;
   const open = SQUARE_IDS.filter((id) => squares[id] === null);
   const mine = squareOf(squares, uid);
 
   return (
     <>
-      <section className="card scoreline">
-        <div>
-          <p className="label">{CURRENT_SEASON} season</p>
-          <p className="matchup">The board</p>
+      {current && weeks.length > 1 && (
+        <div className="week-chips week-chips-player" role="list">
+          {weeks.map((w) => (
+            <button
+              key={w.id}
+              role="listitem"
+              className={`week-chip${w.week === current.week ? " week-chip-on" : ""}`}
+              aria-pressed={w.week === current.week}
+              aria-label={`Week ${w.week}`}
+              onClick={() => setPicked(w.week)}
+            >
+              {w.week}
+            </button>
+          ))}
         </div>
-        <div className="pot">
-          <p className="label">Squares</p>
-          <p className="pot-amount">
-            {filled}
-            <span className="pot-of">/12</span>
-          </p>
-        </div>
-      </section>
+      )}
 
-      <Board
-        layout={seasonLayout(squares)}
-        topDigits={NO_DIGITS}
-        leftDigits={NO_DIGITS}
-        topTeam="Team TBD"
-        leftTeam="Team TBD"
-        mySquareId={mine}
-        openSquareIds={open}
-      />
-      <p className="board-note">
-        Numbers 0–9 are shuffled for each week's game. The teams and numbers go up here every
-        Sunday.
-      </p>
+      {current ? (
+        <WeekView week={current} liveSquares={squares} uid={uid} />
+      ) : (
+        <>
+        <section className="card scoreline">
+          <div>
+            <p className="label">{CURRENT_SEASON} season</p>
+            <p className="matchup">The board</p>
+          </div>
+          <div className="pot">
+            <p className="label">Squares</p>
+            <p className="pot-amount">
+              {filled}
+              <span className="pot-of">/12</span>
+            </p>
+          </div>
+        </section>
+
+        <Board
+          layout={seasonLayout(squares)}
+          topDigits={NO_DIGITS}
+          leftDigits={NO_DIGITS}
+          topTeam="Team TBD"
+          leftTeam="Team TBD"
+          mySquareId={mine}
+          openSquareIds={open}
+        />
+        <p className="board-note">
+          Numbers 0–9 are shuffled for each week's game. The teams and numbers go up here every
+          Sunday.
+        </p>
+        </>
+      )}
 
       <section className="card your-square">
         {mine ? (

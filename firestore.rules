@@ -33,6 +33,13 @@ service cloud.firestore {
     match /seasons/{season} {
       allow read: if isAdmin() || isApprovedPlayer();
       allow write: if false;
+
+      // Weekly boards: players see them once published; drafts are admin-only.
+      match /weeks/{week} {
+        allow read: if isAdmin()
+          || (isApprovedPlayer() && resource.data.status in ["open", "locked"]);
+        allow write: if false;
+      }
     }
 
     match /auditLog/{id} {

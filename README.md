@@ -64,6 +64,25 @@ On the **Players** page the admin can:
 Removing a player opens their square; renaming updates the board. Players see
 the season board with their own square outlined, plus a "Your square" card.
 
+## Weekly boards (Phase 5)
+
+Admin → **Weeks**. Each regular-season week (1–18) has one board at
+`seasons/2027/weeks/wNN`:
+
+1. **Get the Sunday night matchup** pulls the game from ESPN's public NFL
+   scoreboard ([`shared/schedule.ts`](shared/schedule.ts)): the Sunday game
+   kicking off at 7 PM Eastern or later, NBC preferred. The **home team goes
+   across the top**. Until the 2027 schedule is out, tick the testing box to
+   use the 2026 schedule, or enter the teams by hand.
+2. **Publish** shows the board to players, numbers still hidden.
+3. **Lock & draw numbers** shuffles 0–9 for each axis on the server
+   (`crypto.randomInt`) and freezes who sits in each square at that moment.
+   Locked boards can't change or be deleted. (Phase 6 locks boards
+   automatically once payments are in.)
+
+Players see the latest published week on the Board tab and can flip back to
+earlier weeks. Drafts are hidden from players by the Firestore rules.
+
 All writes go through Cloud Functions in [`functions/src`](functions/src/index.ts);
 Firestore rules let a player read only their own record, and the admin read
 players, invitations and the audit log. Every action is written to `auditLog`.
@@ -119,7 +138,7 @@ firebase deploy --only functions,firestore
 2. ✅ Invite-only registration and rules acceptance
 3. ✅ Admin approval and player management
 4. ✅ Permanent season squares
-5. Weekly board generation and publication
+5. ✅ Weekly board generation and publication
 6. Payments and automatic board lock
 7. Prize calculations and rollovers
 8. Winner announcements and results history
