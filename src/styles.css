@@ -1020,3 +1020,23 @@ details.panel .rules {
 .pay-btn {
   min-width: 104px;
 }
+
+/* ---- Payment links ---- */
+.pay-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pay-link {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+.pay-links .hint {
+  margin: 0;
+}
+.your-square > div {
+  flex: 1;
+  min-width: 0;
+}
