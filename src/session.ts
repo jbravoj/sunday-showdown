@@ -14,6 +14,7 @@ import { normalizeInviteCode, type PlayerStatus } from "../shared/invite.ts";
 import { CURRENT_SEASON, normalizeSquares, type Seat } from "../shared/season.ts";
 import type { Team } from "../shared/schedule.ts";
 import type { WeekStatus } from "../shared/week.ts";
+import type { PrizeBreakdown } from "../shared/game.ts";
 
 // ---------- local storage (wrapped: storage can throw in private modes) ----------
 
@@ -226,6 +227,11 @@ export interface WeekBoard {
   leftDigits: number[] | null;
   /** Who sat where when the board locked; null before. */
   squares: Record<string, Seat | null> | null;
+  /** uid → paid, set by the admin until the board locks. */
+  payments?: Record<string, boolean>;
+  /** Frozen at lock. */
+  paidSquareIds?: string[];
+  prize?: PrizeBreakdown;
 }
 
 export type WeeksState =

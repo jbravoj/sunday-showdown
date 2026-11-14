@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from "react";
-import WeekView from "../WeekView.tsx";
+import WeekView, { weekFigures } from "../WeekView.tsx";
 import { api, errorMessage } from "../firebase.ts";
 import { useSeason, useWeeks, type WeekBoard } from "../session.ts";
-import { CURRENT_SEASON } from "../../shared/season.ts";
+import { CURRENT_SEASON, SQUARE_IDS, squareNumber, type Seat } from "../../shared/season.ts";
+import { formatCents } from "../../shared/game.ts";
+import { LOCK_LEAD_MINUTES } from "../../shared/week.ts";
 import { REGULAR_SEASON_WEEKS } from "../../shared/schedule.ts";
 
 const WEEKS = Array.from({ length: REGULAR_SEASON_WEEKS }, (_, i) => i + 1);
@@ -92,7 +94,8 @@ export default function AdminWeeks() {
         <h2>Weekly boards</h2>
         <p>
           Set up each week's Sunday night game. The home team goes across the top. Players see the
-          board once you publish it; the numbers are drawn when you lock it.
+          board once you publish it. Boards lock on their own {LOCK_LEAD_MINUTES} minutes before
+          kickoff (or when you lock them): the numbers are drawn and payments become final.
         </p>
         <div className="week-chips" role="list">
           {WEEKS.map((n) => (
@@ -121,6 +124,13 @@ export default function AdminWeeks() {
       {board ? (
         <>
           <WeekView week={board} liveSquares={season.squares} uid={null} />
+
+          <Payments
+            board={board}
+            liveSquares={season.squares}
+            busy={busy}
+            onToggle={(uid, paid) => run(() => api.setPayment({ week: selected, uid, paid }))}
+          />
 
           <section className="card panel week-actions">
             {board.source !== "espn" && (
@@ -225,5 +235,59 @@ export default function AdminWeeks() {
         </section>
       )}
     </>
+  );
+}
+
+/** Who paid this week. Editable until the board locks, then frozen. */
+function Payments(props: {
+  board: WeekBoard;
+  liveSquares: Record<string, Seat | null>;
+  busy: boolean;
+  onToggle: (uid: string, paid: boolean) => void;
+}) {
+  const { board, liveSquares, busy, onToggle } = props;
+  const { locked, squares, paid, seated, potCents } = weekFigures(board, liveSquares);
+
+  return (
+    <section className="card panel">
+      <div className="players-head">
+        <h2>Payments</h2>
+        <p className="seat-count">
+          <strong>{paid.length}</strong> / {seated.length} paid
+        </p>
+      </div>
+      <p>
+        {locked
+          ? `Final for week ${board.week}. Pot ${formatCents(potCents)}.`
+          : `Tap to mark who's paid the $100. Pot so far ${formatCents(potCents)}. Anyone not marked paid when the board locks can't win this week.`}
+      </p>
+      {seated.length === 0 && <p className="hint">No one has a square yet. Assign squares on the Players page.</p>}
+      <ul className="pay-list">
+        {SQUARE_IDS.filter((id) => squares[id] !== null).map((id) => {
+          const seat = squares[id]!;
+          const isPaid = paid.includes(id);
+          return (
+            <li key={id}>
+              <span className="square-badge square-badge-small">{squareNumber(id)}</span>
+              <span className="pay-name">{seat.name}</span>
+              {locked ? (
+                <span className={isPaid ? "paid-pill paid-yes" : "paid-pill paid-no"}>
+                  {isPaid ? "Paid" : "Not paid"}
+                </span>
+              ) : (
+                <button
+                  className={isPaid ? "btn btn-small btn-primary pay-btn" : "btn btn-small btn-ghost pay-btn"}
+                  disabled={busy}
+                  aria-pressed={isPaid}
+                  onClick={() => onToggle(seat.uid, !isPaid)}
+                >
+                  {isPaid ? "Paid ✓" : "Mark paid"}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

@@ -83,6 +83,20 @@ Admin → **Weeks**. Each regular-season week (1–18) has one board at
 Players see the latest published week on the Board tab and can flip back to
 earlier weeks. Drafts are hidden from players by the Firestore rules.
 
+## Payments and auto-lock (Phase 6)
+
+Payments are collected outside the site; the admin records them. On Admin →
+**Weeks**, each board has a **Payments** list: tap **Mark paid** per player.
+Payments are keyed by player, so a square swap keeps who paid.
+
+Every 5 minutes the `autoLockBoards` scheduled function locks any board whose
+kickoff is **30 minutes away or less** (`LOCK_LEAD_MINUTES` in
+[`shared/week.ts`](shared/week.ts)), drafts included. Locking (automatic or
+by hand) draws the numbers and freezes the squares, **who paid** and the
+**prize** (5/6 of what was paid, plus any rollover). Payments can't change
+after that: NO PAY • NO PLAY. Unpaid squares show **NOT PAID** on the locked
+board, and players see their own paid status on the "Your square" card.
+
 All writes go through Cloud Functions in [`functions/src`](functions/src/index.ts);
 Firestore rules let a player read only their own record, and the admin read
 players, invitations and the audit log. Every action is written to `auditLog`.
@@ -139,7 +153,7 @@ firebase deploy --only functions,firestore
 3. ✅ Admin approval and player management
 4. ✅ Permanent season squares
 5. ✅ Weekly board generation and publication
-6. Payments and automatic board lock
+6. ✅ Payments and automatic board lock
 7. Prize calculations and rollovers
 8. Winner announcements and results history
 9. Mobile and visual polish

@@ -1,7 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { easternTime, findSundayNightGame, parseScoreboard, scoreboardUrl } from "./schedule.ts";
-import { checkWeekOp, isValidWeek, weekId } from "./week.ts";
+import {
+  LOCK_LEAD_MINUTES,
+  checkWeekOp,
+  isLockDue,
+  isValidWeek,
+  lockDueMs,
+  lockSnapshot,
+  paidSquareIds,
+  weekId,
+} from "./week.ts";
+import { emptySquares } from "./season.ts";
 
 // Trimmed from ESPN's real 2026 Week 10 scoreboard (fields we use only).
 function ev(id: string, date: string, home: string[], away: string[], network: string) {
@@ -98,4 +108,44 @@ test("week status transitions", () => {
   assert.ok(checkWeekOp("open", "delete").ok);
   assert.ok(!checkWeekOp("locked", "delete").ok);
   assert.ok(!checkWeekOp(null, "delete").ok);
+});
+
+// ---------- Phase 6 ----------
+
+test("boards lock 30 minutes before kickoff, drafts included", () => {
+  const kickoff = Date.parse("2027-09-12T00:20:00Z");
+  assert.equal(LOCK_LEAD_MINUTES, 30);
+  assert.equal(lockDueMs(kickoff), Date.parse("2027-09-11T23:50:00Z"));
+  assert.equal(isLockDue("open", kickoff, lockDueMs(kickoff) - 1), false);
+  assert.equal(isLockDue("open", kickoff, lockDueMs(kickoff)), true);
+  assert.equal(isLockDue("draft", kickoff, kickoff), true);
+  assert.equal(isLockDue("locked", kickoff, kickoff + 1), false);
+});
+
+test("paid squares follow the player, not the square", () => {
+  const s = emptySquares();
+  s.sq01 = { uid: "a", name: "A" };
+  s.sq02 = { uid: "b", name: "B" };
+  s.sq03 = { uid: "c", name: "C" };
+  assert.deepEqual(paidSquareIds(s, { a: true, b: false, z: true }), ["sq01"]);
+  // swap a and b: the paid flag moves with a
+  const swapped = { ...s, sq01: s.sq02, sq02: s.sq01 };
+  assert.deepEqual(paidSquareIds(swapped, { a: true }), ["sq02"]);
+});
+
+test("lock snapshot: 12 paid = $1,000 prize, $200 support", () => {
+  const s = emptySquares();
+  for (let i = 1; i <= 12; i++) s[`sq${String(i).padStart(2, "0")}`] = { uid: `u${i}`, name: `P${i}` };
+  const all = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`u${i + 1}`, true]));
+  const snap = lockSnapshot(s, all, 0);
+  assert.equal(snap.paidSquareIds.length, 12);
+  assert.equal(snap.prize.prizeCents, 100_000);
+  assert.equal(snap.prize.supportCents, 20_000);
+  assert.equal(snap.prize.potCents, 100_000);
+});
+
+test("lock snapshot with nobody paid and a rollover", () => {
+  const snap = lockSnapshot(emptySquares(), {}, 100_000);
+  assert.deepEqual(snap.paidSquareIds, []);
+  assert.equal(snap.prize.potCents, 100_000);
 });

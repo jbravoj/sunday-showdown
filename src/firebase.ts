@@ -59,6 +59,9 @@ export const api = {
     | { op: "publish" | "lock" | "delete"; week: number },
     { ok: true; summary: string }
   >("manageWeek"),
+  setPayment: callable<{ week: number; uid: string; paid: boolean }, { ok: true; summary: string }>(
+    "setPayment",
+  ),
 };
 
 /** Human-readable message from a Firebase or other error. */
