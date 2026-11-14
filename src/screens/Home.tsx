@@ -1,6 +1,7 @@
 import Board from "../Board.tsx";
 import { useState } from "react";
 import WeekView, { weekFigures } from "../WeekView.tsx";
+import { PAYMENT_LINKS } from "../paymentLinks.ts";
 import { useSeason, useWeeks } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
 import { computePrize, formatCents, resolveWeek } from "../../shared/game.ts";
@@ -101,6 +102,22 @@ export default function Home({ uid }: { uid: string }) {
                 <p className={paidThisWeek ? "paid-pill paid-yes" : "paid-pill paid-no"}>
                   Week {current.week}: {paidThisWeek ? "Paid" : "Not paid"}
                 </p>
+              )}
+              {current && current.status !== "locked" && paidThisWeek === false && (
+                <div className="pay-links">
+                  {PAYMENT_LINKS.map((link) => (
+                    <a key={link.href} className="btn btn-primary pay-link" href={link.href}>
+                      {link.label}
+                    </a>
+                  ))}
+                  {PAYMENT_LINKS.map((link) =>
+                    link.hint ? (
+                      <p key={`${link.href}-hint`} className="hint">
+                        {link.hint} The admin marks you paid once it comes through.
+                      </p>
+                    ) : null,
+                  )}
+                </div>
               )}
               <p className="hint">
                 Row {SQUARE_BLOCKS[mine].row + 1}, column {SQUARE_BLOCKS[mine].col + 1} on the
