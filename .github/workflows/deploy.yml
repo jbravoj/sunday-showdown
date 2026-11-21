@@ -1,4 +1,4 @@
-name: Test and deploy to GitHub Pages
+name: Test and deploy to Firebase Hosting
 
 on:
   push:
@@ -8,11 +8,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -30,18 +28,31 @@ jobs:
         run: npm run build
       - name: Type-check and build Cloud Functions
         run: npm run build:functions
-      - if: github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
 
   deploy:
+    # Only main deploys. Needs the FIREBASE_SERVICE_ACCOUNT_SUNDAY_SHOWDOWN_FE8EC
+    # secret, which `firebase init hosting:github` creates; without it this
+    # job skips instead of failing.
     if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      HAS_DEPLOY_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SUNDAY_SHOWDOWN_FE8EC != '' }}
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - if: env.HAS_DEPLOY_KEY != 'true'
+        run: echo "No Firebase deploy key yet; run 'firebase init hosting:github' once. Skipping deploy."
+      - if: env.HAS_DEPLOY_KEY == 'true'
+        uses: actions/checkout@v4
+      - if: env.HAS_DEPLOY_KEY == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - if: env.HAS_DEPLOY_KEY == 'true'
+        run: npm install
+      - if: env.HAS_DEPLOY_KEY == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SUNDAY_SHOWDOWN_FE8EC }}
+          channelId: live
+          projectId: sunday-showdown-fe8ec
