@@ -2,6 +2,7 @@ import Board from "../Board.tsx";
 import { useState } from "react";
 import { WeekBoardView, WeekScoreCard, weekFigures } from "../WeekView.tsx";
 import { PAYMENT_LINKS } from "../paymentLinks.ts";
+import { REGULAR_SEASON_WEEKS } from "../../shared/schedule.ts";
 import { useSeason, useWeeks } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
 import { computePrize, formatCents, resolveWeek } from "../../shared/game.ts";
@@ -15,6 +16,7 @@ import {
 } from "../../shared/season.ts";
 
 const NO_DIGITS = Array.from({ length: 10 }, () => null);
+const ALL_WEEKS = Array.from({ length: REGULAR_SEASON_WEEKS }, (_, i) => i + 1);
 
 /**
  * Approved players' home. One grid: stacked on phones; on desktop the board
@@ -39,6 +41,11 @@ export default function Home({ uid }: { uid: string }) {
   const fig = current ? weekFigures(current, squares) : null;
   const weekSquare = fig ? squareOf(fig.squares, uid) : null;
   const paidThisWeek = fig && weekSquare ? fig.paid.includes(weekSquare) : null;
+  // A locked week froze who sat where; show the square from that week, and
+  // mention the current one if the admin has moved this player since.
+  const shown = fig?.locked ? weekSquare : mine;
+  const shownSquares = fig?.locked ? fig.squares : squares;
+  const movedTo = fig?.locked && mine && mine !== weekSquare ? mine : null;
 
   return (
     <div className="home-grid">
@@ -59,20 +66,37 @@ export default function Home({ uid }: { uid: string }) {
         )}
       </div>
 
-      {current && weeks.length > 1 && (
+      {current && (
         <div className="area-weeks week-chips week-chips-player" role="list">
-          {weeks.map((w) => (
-            <button
-              key={w.id}
-              role="listitem"
-              className={`week-chip${w.week === current.week ? " week-chip-on" : ""}`}
-              aria-pressed={w.week === current.week}
-              aria-label={`Week ${w.week}`}
-              onClick={() => setPicked(w.week)}
-            >
-              {w.week}
-            </button>
-          ))}
+          {ALL_WEEKS.map((n) => {
+            const w = weeks.find((x) => x.week === n);
+            if (!w) {
+              return (
+                <button
+                  key={n}
+                  role="listitem"
+                  className="week-chip week-chip-later"
+                  disabled
+                  aria-label={`Week ${n}, not posted yet`}
+                >
+                  {n}
+                </button>
+              );
+            }
+            const on = w.week === current.week;
+            return (
+              <button
+                key={n}
+                role="listitem"
+                className={`week-chip${on ? " week-chip-on" : ""}`}
+                aria-pressed={on}
+                aria-label={`Week ${n}`}
+                onClick={() => setPicked(n)}
+              >
+                {n}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -119,12 +143,12 @@ export default function Home({ uid }: { uid: string }) {
       </div>
 
       <section className="area-square card your-square">
-        {mine ? (
+        {shown ? (
           <>
             <div>
-              <p className="label">Your square</p>
+              <p className="label">{fig?.locked ? `Your square · week ${current!.week}` : "Your square"}</p>
               <p className="matchup">
-                {squareNumber(mine)} · {squares[mine]!.name}
+                {squareNumber(shown)} · {shownSquares[shown]!.name}
               </p>
               {current && paidThisWeek !== null && (
                 <p className={paidThisWeek ? "paid-pill paid-yes" : "paid-pill paid-no"}>
@@ -148,16 +172,23 @@ export default function Home({ uid }: { uid: string }) {
                 </div>
               )}
               <p className="hint">
-                Row {SQUARE_BLOCKS[mine].row + 1}, column {SQUARE_BLOCKS[mine].col + 1} on the
-                board. It's yours all season.
+                Row {SQUARE_BLOCKS[shown].row + 1}, column {SQUARE_BLOCKS[shown].col + 1} on the
+                board.{" "}
+                {movedTo
+                  ? `You're in square ${squareNumber(movedTo)} from now on.`
+                  : "It's yours all season."}
               </p>
             </div>
-            <span className="square-badge">{squareNumber(mine)}</span>
+            <span className="square-badge">{squareNumber(shown)}</span>
           </>
         ) : (
           <div>
             <p className="label">Your square</p>
-            <p className="hint">The admin hasn't assigned your square yet. Check back soon.</p>
+            <p className="hint">
+              {fig?.locked && mine
+                ? `You didn't have a square when week ${current!.week} locked. You're in square ${squareNumber(mine)} now.`
+                : "The admin hasn't assigned your square yet. Check back soon."}
+            </p>
           </div>
         )}
       </section>

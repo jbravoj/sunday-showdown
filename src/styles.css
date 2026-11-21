@@ -1240,3 +1240,57 @@ details.panel .rules {
     max-width: none;
   }
 }
+
+/* ---- Desktop polish ---- */
+.week-chips-player .week-chip-on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+.week-chip-later {
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (min-width: 960px) {
+  /* No sideways scroll from the full-width top bar background. */
+  html {
+    overflow-x: clip;
+  }
+  /* Top bar background runs edge to edge, content stays in the page width. */
+  .topbar {
+    position: relative;
+    margin-top: calc(-1 * max(24px, env(safe-area-inset-top)));
+    padding-top: 18px;
+    padding-bottom: 18px;
+    border-bottom: 0;
+  }
+  .topbar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(50% - 50vw);
+    right: calc(50% - 50vw);
+    z-index: -1;
+    background: rgba(15, 30, 24, 0.9);
+    border-bottom: 1px solid var(--line);
+  }
+  .week-chips-player {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .week-chips-player .week-chip {
+    flex: 0 0 48px;
+  }
+  /* The title already shows the week and the locked/draft status. */
+  .area-score .week-prefix,
+  .area-score .status-line.status-locked,
+  .area-score .status-line.status-draft {
+    display: none;
+  }
+}
