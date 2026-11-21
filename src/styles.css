@@ -1294,3 +1294,41 @@ details.panel .rules {
     display: none;
   }
 }
+
+/* ---- Board text sized to the board, not the screen ----
+   The board shows up full width on phones, large on desktop, and small in
+   the desktop sidebar ("How a week is decided"). Container units (cqi = 1%
+   of the board's width) keep names and numbers in proportion everywhere.
+   The vw sizes above stay as a fallback for browsers without them. */
+.board-wrap {
+  container-type: inline-size;
+}
+@supports (font-size: 1cqi) {
+  .digit {
+    font-size: clamp(0.6rem, 2.7cqi, 1.15rem);
+  }
+  .tile-player {
+    padding: clamp(10px, 3.2cqi, 20px) clamp(3px, 0.8cqi, 6px) clamp(3px, 0.8cqi, 6px);
+  }
+  .tile-num {
+    top: clamp(2px, 0.6cqi, 5px);
+    left: clamp(3px, 0.9cqi, 7px);
+    font-size: clamp(0.45rem, 1.7cqi, 0.75rem);
+  }
+  .tile-name {
+    font-size: clamp(0.55rem, 2.9cqi, 1.2rem);
+  }
+  .tile-flag {
+    bottom: clamp(2px, 0.5cqi, 4px);
+    font-size: clamp(0.4rem, 1.4cqi, 0.65rem);
+  }
+}
+/* One line per name; a name that's still too long ends in "…" instead of
+   spilling out of its square. */
+.tile-name {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
