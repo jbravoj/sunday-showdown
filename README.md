@@ -3,7 +3,7 @@
 **NO PAY • NO PLAY • NO OT**
 
 A private, invite-only Sunday Night Football squares board for 12 players.
-React + TypeScript + Vite on GitHub Pages, with Firebase (Auth, Firestore,
+React + TypeScript + Vite on Firebase Hosting, with Firebase (Auth, Firestore,
 Cloud Functions) for everything that touches money or fairness.
 
 ## How the game works
@@ -108,7 +108,7 @@ Requires Node 22.6+.
 ```sh
 npm install
 npm test        # game rules tests
-npm run dev     # local site at http://localhost:5173/sunday-showdown/
+npm run dev     # local site at http://localhost:5173/
 npm run build
 
 # Against local emulators (needs the Firebase CLI: npm i -g firebase-tools)
@@ -119,17 +119,37 @@ npm run dev:emulators     # terminal 2
 
 ## Deploy
 
-Every push to `main` runs the tests, builds, and publishes to GitHub Pages via
-`.github/workflows/deploy.yml`.
+The site is served by **Firebase Hosting** at https://sunday-showdown-fe8ec.web.app
+(plus the custom domain once it's connected). Every push to `main` runs the
+tests, builds, and deploys to Hosting via `.github/workflows/deploy.yml`.
 
-One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+One-time setup for automatic deploys (creates the
+`FIREBASE_SERVICE_ACCOUNT_SUNDAY_SHOWDOWN_FE8EC` repo secret; answer **No**
+when asked to overwrite the workflow):
+
+```sh
+npx firebase-tools init hosting:github --project sunday-showdown-fe8ec
+```
+
+Deploy by hand (builds first):
+
+```sh
+npx firebase-tools deploy --only hosting --project sunday-showdown-fe8ec
+```
 
 Cloud Functions and Firestore rules are deployed from your machine:
 
 ```sh
 npm --prefix functions install
-firebase deploy --only functions,firestore
+npx firebase-tools deploy --only functions,firestore --project sunday-showdown-fe8ec
 ```
+
+### Custom domain
+
+Firebase console → **Hosting → Add custom domain**, then add the TXT and A
+records it shows at the domain registrar. HTTPS is set up automatically. Add
+the domain under **Authentication → Settings → Authorized domains** so sign-in
+works there.
 
 ### One-time Firebase setup (Phase 2)
 
@@ -137,7 +157,7 @@ firebase deploy --only functions,firestore
    players stays inside the free allowance; set a budget alert anyway.
 2. **Authentication → Sign-in method:** enable **Email/Password** (the first
    toggle only; leave "Email link" off). Google sign-in isn't used.
-3. **Authentication → Settings → Authorized domains:** add `jbravoj.github.io`.
+3. **Authentication → Settings → Authorized domains:** `sunday-showdown-fe8ec.web.app` is there by default; add your custom domain.
 4. **Firestore:** create the database (production mode), then deploy as above.
 5. **Make yourself admin:** sign in on the site once, then
    ```sh
