@@ -35,7 +35,8 @@ export function WeekScoreCard({ week, liveSquares }: Omit<ViewProps, "uid">) {
       <section className="card scoreline">
         <div>
           <p className="label">
-            Week {week.week} · {kickoffLabel(week.kickoff)}
+            <span className="week-prefix">Week {week.week} · </span>
+            {kickoffLabel(week.kickoff)}
           </p>
           <p className="matchup">{week.away.short}</p>
           <p className="matchup">@ {week.home.short}</p>

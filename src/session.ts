@@ -274,6 +274,6 @@ export function useWeeks(includeDrafts: boolean): WeeksState {
 export function kickoffLabel(kickoff: Timestamp): string {
   const d = kickoff.toDate();
   const day = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   return `${day} · ${time}`;
 }
