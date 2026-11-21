@@ -1,6 +1,6 @@
 import Board from "../Board.tsx";
 import { useState } from "react";
-import WeekView, { weekFigures } from "../WeekView.tsx";
+import { WeekBoardView, WeekScoreCard, weekFigures } from "../WeekView.tsx";
 import { PAYMENT_LINKS } from "../paymentLinks.ts";
 import { useSeason, useWeeks } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
@@ -16,7 +16,10 @@ import {
 
 const NO_DIGITS = Array.from({ length: 10 }, () => null);
 
-/** Approved players' home: the season board with everyone's permanent square. */
+/**
+ * Approved players' home. One grid: stacked on phones; on desktop the board
+ * sits on the left with the score, your square and payments on the right.
+ */
 export default function Home({ uid }: { uid: string }) {
   const season = useSeason(true);
   const weeksState = useWeeks(false);
@@ -38,9 +41,26 @@ export default function Home({ uid }: { uid: string }) {
   const paidThisWeek = fig && weekSquare ? fig.paid.includes(weekSquare) : null;
 
   return (
-    <>
+    <div className="home-grid">
+      <div className="area-title">
+        <h1 className="page-title">
+          {current
+            ? `Week ${current.week} · ${current.away.short} @ ${current.home.short}`
+            : `${CURRENT_SEASON} season board`}
+        </h1>
+        {current && (
+          <span className={`status-pill status-${current.status}`}>
+            {current.status === "locked"
+              ? "Locked · numbers drawn"
+              : current.status === "open"
+                ? "Open · numbers drawn at lock"
+                : "Draft"}
+          </span>
+        )}
+      </div>
+
       {current && weeks.length > 1 && (
-        <div className="week-chips week-chips-player" role="list">
+        <div className="area-weeks week-chips week-chips-player" role="list">
           {weeks.map((w) => (
             <button
               key={w.id}
@@ -56,41 +76,49 @@ export default function Home({ uid }: { uid: string }) {
         </div>
       )}
 
-      {current ? (
-        <WeekView week={current} liveSquares={squares} uid={uid} />
-      ) : (
-        <>
-        <section className="card scoreline">
-          <div>
-            <p className="label">{CURRENT_SEASON} season</p>
-            <p className="matchup">The board</p>
-          </div>
-          <div className="pot">
-            <p className="label">Squares</p>
-            <p className="pot-amount">
-              {filled}
-              <span className="pot-of">/12</span>
+      <div className="area-score">
+        {current ? (
+          <WeekScoreCard week={current} liveSquares={squares} />
+        ) : (
+          <section className="card scoreline">
+            <div>
+              <p className="label">{CURRENT_SEASON} season</p>
+              <p className="matchup">The board</p>
+            </div>
+            <div className="pot">
+              <p className="label">Squares</p>
+              <p className="pot-amount">
+                {filled}
+                <span className="pot-of">/12</span>
+              </p>
+            </div>
+          </section>
+        )}
+      </div>
+
+      <div className="area-board">
+        {current ? (
+          <WeekBoardView week={current} liveSquares={squares} uid={uid} />
+        ) : (
+          <>
+            <Board
+              layout={seasonLayout(squares)}
+              topDigits={NO_DIGITS}
+              leftDigits={NO_DIGITS}
+              topTeam="Team TBD"
+              leftTeam="Team TBD"
+              mySquareId={mine}
+              openSquareIds={open}
+            />
+            <p className="board-note">
+              Numbers 0–9 are shuffled for each week's game. The teams and numbers go up here every
+              Sunday.
             </p>
-          </div>
-        </section>
+          </>
+        )}
+      </div>
 
-        <Board
-          layout={seasonLayout(squares)}
-          topDigits={NO_DIGITS}
-          leftDigits={NO_DIGITS}
-          topTeam="Team TBD"
-          leftTeam="Team TBD"
-          mySquareId={mine}
-          openSquareIds={open}
-        />
-        <p className="board-note">
-          Numbers 0–9 are shuffled for each week's game. The teams and numbers go up here every
-          Sunday.
-        </p>
-        </>
-      )}
-
-      <section className="card your-square">
+      <section className="area-square card your-square">
         {mine ? (
           <>
             <div>
@@ -134,11 +162,35 @@ export default function Home({ uid }: { uid: string }) {
         )}
       </section>
 
-      <details className="card panel sample">
+      {current && fig && fig.seated.length > 0 && (
+        <section className="area-paid card">
+          <div className="players-head">
+            <p className="label">{fig.locked ? "Paid (final)" : "Paid this week"}</p>
+            <p className="seat-count">
+              <strong>{fig.paid.length}</strong> / {fig.seated.length}
+            </p>
+          </div>
+          <ul className="paid-grid">
+            {fig.seated.map((id) => {
+              const isPaid = fig.paid.includes(id);
+              return (
+                <li key={id} className={isPaid ? "is-paid" : "is-unpaid"}>
+                  <span className="paid-dot" aria-hidden="true" />
+                  <span className="paid-num">{squareNumber(id)}</span>
+                  <span className="paid-name">{fig.squares[id]!.name}</span>
+                  <span className="visually-hidden">{isPaid ? "paid" : "not paid"}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      <details className="area-sample card panel sample">
         <summary>How a week is decided</summary>
         <SampleWeek />
       </details>
-    </>
+    </div>
   );
 }
 
