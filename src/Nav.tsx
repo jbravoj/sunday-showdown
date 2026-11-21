@@ -105,9 +105,20 @@ export function AdminSubnav({ route }: { route: string }) {
   );
 }
 
-/** Wordmark on the left; when signed in, a menu button with the account and Sign out. */
-export function TopBar(props: { signedIn: boolean; name: string | null; email: string | null }) {
+/**
+ * Wordmark on the left; when signed in, a menu button with the account and
+ * Sign out. On desktop the main tabs and the motto sit in this bar too (the
+ * bottom tab bar is phone-only).
+ */
+export function TopBar(props: {
+  signedIn: boolean;
+  name: string | null;
+  email: string | null;
+  route: string;
+  isAdmin: boolean;
+}) {
   const [open, setOpen] = useState(false);
+  const tabs = props.isAdmin ? [...PLAYER_TABS, ADMIN_TAB] : PLAYER_TABS;
   return (
     <header className="topbar">
       <a className="wordmark" href="#/">
@@ -117,13 +128,37 @@ export function TopBar(props: { signedIn: boolean; name: string | null; email: s
         </span>
       </a>
       {props.signedIn && (
+        <nav className="topnav" aria-label="Main">
+          {tabs.map((tab) => {
+            const active = tab === ADMIN_TAB ? isAdminRoute(props.route) : props.route === tab.path;
+            return (
+              <a
+                key={tab.path}
+                href={`#${tab.path}`}
+                className={active ? "topnav-item topnav-active" : "topnav-item"}
+                aria-current={active ? "page" : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(tab.path);
+                }}
+              >
+                {ICONS[tab.icon]}
+                <span>{tab.label}</span>
+              </a>
+            );
+          })}
+        </nav>
+      )}
+      {props.signedIn && <span className="motto topbar-motto">NO PAY • NO PLAY • NO OT</span>}
+      {props.signedIn && (
         <div className="menu">
           <button
-            className="icon-btn"
+            className="icon-btn account-btn"
             aria-label="Account menu"
             aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
           >
+            {props.name && <span className="account-name">{props.name}</span>}
             {ICONS.menu}
           </button>
           {open && (

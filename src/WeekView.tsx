@@ -21,20 +21,15 @@ function lockTimeLabel(week: WeekBoard): string {
   return d.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
 }
 
-/**
- * One week's board. Home team across the top, away team down the side.
- * Before lock it shows the live season squares and "?" numbers; after lock,
- * the squares, numbers and payments frozen at that moment.
- */
-export default function WeekView(props: {
+type ViewProps = {
   week: WeekBoard;
   liveSquares: Record<string, Seat | null>;
   uid: string | null;
-}) {
-  const { week, liveSquares, uid } = props;
-  const { locked, squares, paid, seated, potCents } = weekFigures(week, liveSquares);
-  const mine = uid ? squareOf(squares, uid) : null;
+};
 
+/** Matchup, kickoff, pot and the lock/status banner. */
+export function WeekScoreCard({ week, liveSquares }: Omit<ViewProps, "uid">) {
+  const { locked, paid, seated, potCents } = weekFigures(week, liveSquares);
   return (
     <>
       <section className="card scoreline">
@@ -59,7 +54,20 @@ export default function WeekView(props: {
         {week.status === "open" && `Pay before the board locks ${lockTimeLabel(week)}. NO PAY • NO PLAY.`}
         {week.status === "locked" && "Locked · numbers drawn · payments final"}
       </p>
+    </>
+  );
+}
 
+/**
+ * One week's board. Home team across the top, away team down the side.
+ * Before lock it shows the live season squares and "?" numbers; after lock,
+ * the squares, numbers and payments frozen at that moment.
+ */
+export function WeekBoardView({ week, liveSquares, uid }: ViewProps) {
+  const { locked, squares, paid, seated } = weekFigures(week, liveSquares);
+  const mine = uid ? squareOf(squares, uid) : null;
+  return (
+    <>
       <Board
         layout={seasonLayout(squares)}
         topDigits={locked && week.topDigits ? week.topDigits : NO_DIGITS}
@@ -75,6 +83,16 @@ export default function WeekView(props: {
           ? `Last digit of the ${week.home.short} score across the top, ${week.away.short} down the side. End of regulation only.`
           : "The 0–9 numbers are drawn on the server when the board locks."}
       </p>
+    </>
+  );
+}
+
+/** Score card plus board, stacked (used on the admin Weeks page). */
+export default function WeekView(props: ViewProps) {
+  return (
+    <>
+      <WeekScoreCard week={props.week} liveSquares={props.liveSquares} />
+      <WeekBoardView {...props} />
     </>
   );
 }

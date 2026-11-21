@@ -17,6 +17,8 @@ export default function App() {
   const player = playerState.loading ? null : playerState.player;
 
   let screen;
+  // The board page uses the full desktop width; everything else stays a reading width.
+  let wide = false;
   if (auth.loading || (auth.user && playerState.loading)) {
     screen = <p className="coming">Loading…</p>;
   } else if (!auth.user) {
@@ -74,16 +76,19 @@ export default function App() {
     );
   } else {
     screen = <Home uid={auth.user.uid} />;
+    wide = true;
   }
 
   return (
-    <div className={auth.user ? "page page-tabs" : "page"}>
+    <div className={`page${auth.user ? " page-tabs" : ""}${wide ? " page-wide" : ""}`}>
       <TopBar
         signedIn={auth.user !== null}
         name={player?.displayName ?? null}
         email={auth.user?.email ?? null}
+        route={route}
+        isAdmin={auth.isAdmin}
       />
-      {auth.user && <p className="motto">NO PAY • NO PLAY • NO OT</p>}
+      {auth.user && <p className="motto page-motto">NO PAY • NO PLAY • NO OT</p>}
 
       <main>{screen}</main>
 

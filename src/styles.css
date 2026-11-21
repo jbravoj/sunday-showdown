@@ -1040,3 +1040,203 @@ details.panel .rules {
   flex: 1;
   min-width: 0;
 }
+
+/* ---- Home grid: stacked on phones, two columns on desktop ---- */
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "weeks" "score" "board" "square" "paid" "sample";
+  gap: 12px;
+}
+.home-grid > * {
+  margin: 0;
+}
+.area-title {
+  grid-area: title;
+  display: none;
+}
+.area-weeks {
+  grid-area: weeks;
+}
+.area-score {
+  grid-area: score;
+}
+.area-score .scoreline {
+  margin: 0;
+}
+.area-score .status-line {
+  margin: 8px 0 0;
+}
+.area-board {
+  grid-area: board;
+  min-width: 0;
+}
+.area-board .board-note {
+  margin-bottom: 0;
+}
+.area-square {
+  grid-area: square;
+}
+.area-paid {
+  grid-area: paid;
+}
+.area-sample {
+  grid-area: sample;
+}
+.page-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2.4rem;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.paid-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.paid-grid li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+.paid-dot {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.is-paid .paid-dot {
+  background: var(--accent);
+}
+.is-unpaid .paid-dot {
+  border: 1.5px solid #f0b45a;
+}
+.paid-num {
+  color: var(--muted);
+}
+.paid-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.is-unpaid .paid-name {
+  color: var(--muted);
+}
+
+/* Top bar extras are desktop-only. */
+.topnav,
+.topbar-motto,
+.account-name {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .page {
+    max-width: 760px;
+  }
+  .page-wide {
+    max-width: 1320px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  /* Tabs move into the top bar. */
+  .tabbar,
+  .page-motto {
+    display: none;
+  }
+  .page-tabs {
+    padding-bottom: 48px;
+  }
+  .topbar {
+    gap: 24px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topnav {
+    display: flex;
+    gap: 4px;
+    margin-left: 16px;
+  }
+  .topnav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .topnav-item svg {
+    width: 18px;
+    height: 18px;
+  }
+  .topnav-item:hover {
+    color: var(--text);
+  }
+  .topnav-active,
+  .topnav-active:hover {
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+  .topbar-motto {
+    display: inline-block;
+    margin: 0 0 0 auto;
+  }
+  .menu {
+    margin-left: 0;
+  }
+  .account-btn {
+    width: auto;
+    gap: 10px;
+    padding: 0 12px 0 16px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .account-name {
+    display: inline;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-areas:
+      "title title"
+      "weeks weeks"
+      "board score"
+      "board square"
+      "board paid"
+      "board sample"
+      "board .";
+    grid-template-rows: auto auto auto auto auto auto 1fr;
+    column-gap: 24px;
+    row-gap: 16px;
+    align-items: start;
+  }
+  .area-title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .area-board .board-wrap {
+    padding: 20px 24px 20px 14px;
+  }
+  .area-board .board {
+    max-width: 820px;
+  }
+  .status-pill {
+    max-width: none;
+  }
+}
