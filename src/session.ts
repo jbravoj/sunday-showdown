@@ -191,7 +191,13 @@ export function usePlayer(uid: string | null): PlayerState {
 
 export type SeasonState =
   | { loading: true }
-  | { loading: false; squares: Record<string, Seat | null>; error: string | null };
+  | {
+      loading: false;
+      squares: Record<string, Seat | null>;
+      /** Players marked fully paid: uid → first week covered. */
+      prepaid: Record<string, number>;
+      error: string | null;
+    };
 
 /** Live view of the current season's squares. Only call for approved players or the admin. */
 export function useSeason(enabled: boolean): SeasonState {
@@ -204,9 +210,11 @@ export function useSeason(enabled: boolean): SeasonState {
         setState({
           loading: false,
           squares: normalizeSquares(snap.exists() ? snap.get("squares") : null),
+          prepaid: (snap.exists() ? (snap.get("prepaid") as Record<string, number> | undefined) : undefined) ?? {},
           error: null,
         }),
-      (err) => setState({ loading: false, squares: normalizeSquares(null), error: err.message }),
+      (err) =>
+        setState({ loading: false, squares: normalizeSquares(null), prepaid: {}, error: err.message }),
     );
   }, [enabled]);
   return state;

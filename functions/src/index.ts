@@ -39,11 +39,15 @@ import { shuffleDigits } from "../../shared/game.ts";
 import { findSundayNightGame, parseScoreboard, scoreboardUrl, type Team } from "../../shared/schedule.ts";
 import {
   checkWeekOp,
+  fullPayStart,
   isLockDue,
+  isPaidFor,
   isValidWeek,
   lockSnapshot,
   weekId,
   type Payments,
+  type Prepaid,
+  type WeekState,
   type WeekOp,
   type WeekStatus,
 } from "../../shared/week.ts";
@@ -465,7 +469,8 @@ function lockInTx(
   const squares = normalizeSquares(seasonSnap.get("squares"));
   const payments = (weekSnap.get("payments") ?? {}) as Payments;
   const rolloverInCents = Number(weekSnap.get("rolloverInCents") ?? 0); // Phase 7 fills this in
-  const snapshot = lockSnapshot(squares, payments, rolloverInCents);
+  const prepaid = (seasonSnap.get("prepaid") ?? {}) as Prepaid;
+  const snapshot = lockSnapshot(squares, payments, rolloverInCents, prepaid, Number(weekSnap.get("week")));
   const wasDraft = weekSnap.get("status") === "draft";
   tx.update(ref, {
     status: "locked",
@@ -473,6 +478,7 @@ function lockInTx(
     leftDigits,
     squares,
     paidSquareIds: snapshot.paidSquareIds,
+    payments: snapshot.payments,
     prize: snapshot.prize,
     lockedAt: FieldValue.serverTimestamp(),
     lockedBy: actor,
@@ -491,7 +497,7 @@ function teamArg(value: unknown, field: string): Team {
   const name = str(value, field, 40).trim();
   if (!name) throw new HttpsError("invalid-argument", `${field} is required.`);
   const short = name.split(" ").pop() ?? name;
-  return { name, short, abbr: "" };
+  return { name, short, abbr: "", color: null, alt: null, logo: null };
 }
 
 /**
@@ -625,6 +631,13 @@ export const setPayment = onCall(async (req) => {
     }
     const seat = Object.values(normalizeSquares(season.get("squares"))).find((s) => s?.uid === uid);
     if (!seat) throw new HttpsError("failed-precondition", "That player doesn't have a square.");
+    const prepaid = (season.get("prepaid") ?? {}) as Prepaid;
+    if (!paid && isPaidFor(uid, week, {}, prepaid)) {
+      throw new HttpsError(
+        "failed-precondition",
+        `${seat.name} is marked fully paid from week ${prepaid[uid]}. Undo that on the Players page first.`,
+      );
+    }
     tx.update(ref, { [`payments.${uid}`]: paid, updatedAt: FieldValue.serverTimestamp() });
     audit(tx, admin.uid, "payment.set", ref, { week, uid, name: seat.name, paid });
     return `${seat.name}: ${paid ? "paid" : "not paid"} for week ${week}.`;
@@ -660,3 +673,57 @@ export const autoLockBoards = onSchedule(
     }
   },
 );
+
+/**
+ * Admin marks a player fully paid for the rest of the season (or undoes it).
+ * Covers the open week if they haven't paid it (else the next week) through
+ * week 18, including weeks that aren't posted yet. Locked weeks already have
+ * their payments written in, so undoing never changes a locked week.
+ */
+export const markFullyPaid = onCall(async (req) => {
+  const admin = requireAdmin(req);
+  const data = (req.data ?? {}) as Record<string, unknown>;
+  const uid = playerId(data.uid);
+  const undo = data.undo === true;
+  const weeksCol = seasonRef.collection("weeks");
+
+  const summary = await db.runTransaction(async (tx) => {
+    const [season, playerSnap, weeksSnap] = await Promise.all([
+      tx.get(seasonRef),
+      tx.get(players.doc(uid)),
+      tx.get(weeksCol),
+    ]);
+    if (!playerSnap.exists) throw new HttpsError("not-found", "Player not found.");
+    const name = String(playerSnap.get("displayName"));
+    const prepaid = { ...((season.get("prepaid") ?? {}) as Record<string, number>) };
+
+    if (undo) {
+      if (prepaid[uid] === undefined) throw new HttpsError("failed-precondition", `${name} isn't marked fully paid.`);
+      const from = prepaid[uid];
+      // A merge can't remove a map key; delete it explicitly.
+      tx.update(seasonRef, { [`prepaid.${uid}`]: FieldValue.delete(), updatedAt: FieldValue.serverTimestamp() });
+      audit(tx, admin.uid, "payment.fullyPaid.undo", players.doc(uid), { from });
+      return `${name} is no longer marked fully paid. Weeks that already locked stay as they were.`;
+    }
+
+    if (playerSnap.get("status") !== "approved") {
+      throw new HttpsError("failed-precondition", "Only approved players can be marked fully paid.");
+    }
+    if (prepaid[uid] !== undefined) {
+      throw new HttpsError("failed-precondition", `${name} is already fully paid from week ${prepaid[uid]}.`);
+    }
+    const weeks: WeekState[] = weeksSnap.docs.map((d) => ({
+      week: Number(d.get("week")),
+      status: d.get("status") as WeekStatus,
+      payments: (d.get("payments") ?? {}) as Payments,
+    }));
+    const from = fullPayStart(uid, weeks);
+    if (from === null) throw new HttpsError("failed-precondition", "There are no weeks left to cover.");
+    tx.set(seasonRef, { prepaid: { [uid]: from }, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    const weeksCovered = 18 - from + 1;
+    audit(tx, admin.uid, "payment.fullyPaid", players.doc(uid), { from, weeksCovered });
+    return `${name} is fully paid: weeks ${from}–18 (${weeksCovered} week${weeksCovered === 1 ? "" : "s"}, $${weeksCovered * 100}).`;
+  });
+
+  return { ok: true, summary };
+});

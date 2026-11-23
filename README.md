@@ -83,6 +83,25 @@ Admin → **Weeks**. Each regular-season week (1–18) has one board at
 Players see the latest published week on the Board tab and can flip back to
 earlier weeks. Drafts are hidden from players by the Firestore rules.
 
+## Season balances and "fully paid"
+
+The season is 18 weeks × $100 = $1,800 per player. Admin → **Players** shows
+each approved player's **paid in** and **left to pay** (players see their own
+on the Your square card). **Mark fully paid** credits every remaining week:
+the open week if they haven't paid it (else the week after) through week 18,
+including weeks not posted yet. It's stored as `seasons/2027.prepaid[uid] =
+firstWeek`; boards count those players as paid, and locking writes the credit
+into the week's payments so locked weeks stand on their own. **Undo fully
+paid** only affects weeks that haven't locked.
+
+## Share image
+
+A locked week on Admin → **Weeks** has **Share image**: a 1080×1080 "game
+ticket" JPG of the board, drawn in the browser
+([`src/shareImage.ts`](src/shareImage.ts)) with both teams' colors and their
+official logos from the NFL schedule feed. Phones get the share sheet;
+computers download the file.
+
 ## Simulator
 
 Admin → **Simulator** runs any week end to end in the browser with 12 dummy

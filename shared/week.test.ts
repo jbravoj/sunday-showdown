@@ -12,6 +12,7 @@ import {
   weekId,
 } from "./week.ts";
 import { emptySquares } from "./season.ts";
+import { SEASON_TOTAL_CENTS, fullPayStart, isPaidFor, seasonTally } from "./week.ts";
 
 // Trimmed from ESPN's real 2026 Week 10 scoreboard (fields we use only).
 function ev(id: string, date: string, home: string[], away: string[], network: string) {
@@ -42,7 +43,14 @@ const WEEK10 = {
 test("parses games with home/away teams and networks", () => {
   const games = parseScoreboard(WEEK10);
   assert.equal(games.length, 5);
-  assert.deepEqual(games[3].home, { name: "Cincinnati Bengals", short: "Bengals", abbr: "CIN" });
+  assert.deepEqual(games[3].home, {
+    name: "Cincinnati Bengals",
+    short: "Bengals",
+    abbr: "CIN",
+    color: null,
+    alt: null,
+    logo: null,
+  });
   assert.equal(games[3].away.short, "Steelers");
   assert.equal(games[3].kickoff, "2026-11-16T01:20:00.000Z");
   assert.deepEqual(games[3].networks, ["NBC"]);
@@ -179,4 +187,76 @@ test("regulation score sums quarters 1-4 and ignores overtime", () => {
   // In progress or missing quarters: no regulation score yet.
   assert.equal(parseScoreboard(ev([[7, 3, 0, 7], [0, 10, 7, 0]], false))[0].regulation, null);
   assert.equal(parseScoreboard(ev([[7, 3], [0, 10]]))[0].regulation, null);
+});
+
+// ---------- team colors ----------
+test("team colors and logo come through from the feed", () => {
+  const g = parseScoreboard({
+    events: [
+      {
+        id: "x",
+        date: "2026-11-16T01:20Z",
+        competitions: [
+          {
+            competitors: [
+              { homeAway: "home", team: { displayName: "Cincinnati Bengals", color: "fb4f14", alternateColor: "000000", logo: "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/cin.png" } },
+              { homeAway: "away", team: { displayName: "Pittsburgh Steelers", color: "bogus", logo: "http://insecure" } },
+            ],
+          },
+        ],
+      },
+    ],
+  })[0];
+  assert.equal(g.home.color, "#fb4f14");
+  assert.equal(g.home.alt, "#000000");
+  assert.equal(g.home.logo, "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/cin.png");
+  assert.equal(g.away.color, null);
+  assert.equal(g.away.logo, null);
+});
+
+// ---------- fully paid + season balances ----------
+test("fully paid counts that week and every later week", () => {
+  assert.equal(isPaidFor("a", 9, {}, { a: 10 }), false);
+  assert.equal(isPaidFor("a", 10, {}, { a: 10 }), true);
+  assert.equal(isPaidFor("a", 18, {}, { a: 10 }), true);
+  assert.equal(isPaidFor("a", 3, { a: true }, {}), true);
+});
+
+test("prepaid players are paid on boards and written into the lock snapshot", () => {
+  const s = emptySquares();
+  s.sq01 = { uid: "a", name: "A" };
+  s.sq02 = { uid: "b", name: "B" };
+  assert.deepEqual(paidSquareIds(s, {}, { a: 10 }, 12), ["sq01"]);
+  assert.deepEqual(paidSquareIds(s, {}, { a: 10 }, 9), []);
+  const snap = lockSnapshot(s, { b: false }, 0, { a: 10 }, 12);
+  assert.deepEqual(snap.paidSquareIds, ["sq01"]);
+  assert.deepEqual(snap.payments, { a: true, b: false });
+});
+
+test("season tally: week by week through 9, then fully paid from 10", () => {
+  const weeks = Array.from({ length: 9 }, (_, i) => ({ week: i + 1, payments: { a: true } }));
+  const before = seasonTally("a", weeks);
+  assert.equal(before.paidCents, 90_000);
+  assert.equal(before.leftCents, 90_000);
+  const after = seasonTally("a", weeks, { a: 10 });
+  assert.equal(after.paidCents, SEASON_TOTAL_CENTS);
+  assert.equal(after.leftCents, 0);
+  assert.equal(after.fullyPaidFrom, 10);
+  assert.equal(after.paidWeeks.length, 18);
+});
+
+test("season tally counts only weeks actually paid", () => {
+  const t = seasonTally("a", [{ week: 1, payments: { a: true } }, { week: 2, payments: { a: false } }, { week: 3 }]);
+  assert.deepEqual(t.paidWeeks, [1]);
+  assert.equal(t.leftCents, SEASON_TOTAL_CENTS - 10_000);
+});
+
+test("fully paid starts at the open week, or the next one if it's paid", () => {
+  const locked = Array.from({ length: 9 }, (_, i) => ({ week: i + 1, status: "locked" as const, payments: { a: true } }));
+  assert.equal(fullPayStart("a", [...locked, { week: 10, status: "open", payments: {} }]), 10);
+  assert.equal(fullPayStart("a", [...locked, { week: 10, status: "open", payments: { a: true } }]), 11);
+  assert.equal(fullPayStart("a", locked), 10);
+  assert.equal(fullPayStart("a", []), 1);
+  const all = Array.from({ length: 18 }, (_, i) => ({ week: i + 1, status: "locked" as const }));
+  assert.equal(fullPayStart("a", all), null);
 });

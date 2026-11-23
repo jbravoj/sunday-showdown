@@ -63,11 +63,28 @@ export function isLockDue(status: WeekStatus, kickoffMs: number, nowMs: number):
 /** Payments for a week: uid → paid. Keyed by player, so swapping squares keeps who paid. */
 export type Payments = Readonly<Record<string, boolean>>;
 
-/** Squares whose current occupant has paid. */
-export function paidSquareIds(squares: Squares, payments: Payments): string[] {
+/**
+ * Players marked fully paid: uid → first week covered. They count as paid for
+ * that week and every later week of the regular season.
+ */
+export type Prepaid = Readonly<Record<string, number>>;
+
+export function isPaidFor(uid: string, week: number, payments: Payments, prepaid: Prepaid = {}): boolean {
+  if (payments[uid] === true) return true;
+  const from = prepaid[uid];
+  return typeof from === "number" && week >= from;
+}
+
+/** Squares whose current occupant has paid for `week`. */
+export function paidSquareIds(
+  squares: Squares,
+  payments: Payments,
+  prepaid: Prepaid = {},
+  week = 0,
+): string[] {
   return SQUARE_IDS.filter((id) => {
     const seat = squares[id];
-    return seat !== null && payments[seat.uid] === true;
+    return seat !== null && isPaidFor(seat.uid, week, payments, prepaid);
   });
 }
 
@@ -75,9 +92,77 @@ export function paidSquareIds(squares: Squares, payments: Payments): string[] {
 export interface LockSnapshot {
   paidSquareIds: string[];
   prize: PrizeBreakdown;
+  /** Payments with any fully-paid credit written in, so the locked week stands on its own. */
+  payments: Record<string, boolean>;
 }
 
-export function lockSnapshot(squares: Squares, payments: Payments, rolloverInCents: number): LockSnapshot {
-  const paid = paidSquareIds(squares, payments);
-  return { paidSquareIds: paid, prize: computePrize(paid.length, rolloverInCents) };
+export function lockSnapshot(
+  squares: Squares,
+  payments: Payments,
+  rolloverInCents: number,
+  prepaid: Prepaid = {},
+  week = 0,
+): LockSnapshot {
+  const paid = paidSquareIds(squares, payments, prepaid, week);
+  const merged: Record<string, boolean> = { ...payments };
+  for (const id of paid) merged[squares[id]!.uid] = true;
+  return { paidSquareIds: paid, prize: computePrize(paid.length, rolloverInCents), payments: merged };
+}
+
+// ---------- season balances ----------
+
+export const WEEKLY_BUY_IN_CENTS = 10_000;
+export const SEASON_TOTAL_CENTS = REGULAR_SEASON_WEEKS * WEEKLY_BUY_IN_CENTS;
+
+export interface WeekPayments {
+  week: number;
+  payments?: Payments;
+}
+
+export interface SeasonTally {
+  paidWeeks: number[];
+  paidCents: number;
+  leftCents: number;
+  fullyPaidFrom: number | null;
+}
+
+/**
+ * What a player has paid this season: every week marked paid on its board,
+ * plus every week covered by "fully paid" (including weeks not posted yet).
+ */
+export function seasonTally(uid: string, weeks: readonly WeekPayments[], prepaid: Prepaid = {}): SeasonTally {
+  const byWeek = new Map(weeks.map((w) => [w.week, w.payments ?? {}]));
+  const paidWeeks: number[] = [];
+  for (let n = 1; n <= REGULAR_SEASON_WEEKS; n++) {
+    if (isPaidFor(uid, n, byWeek.get(n) ?? {}, prepaid)) paidWeeks.push(n);
+  }
+  const paidCents = paidWeeks.length * WEEKLY_BUY_IN_CENTS;
+  return {
+    paidWeeks,
+    paidCents,
+    leftCents: SEASON_TOTAL_CENTS - paidCents,
+    fullyPaidFrom: typeof prepaid[uid] === "number" ? prepaid[uid] : null,
+  };
+}
+
+export interface WeekState extends WeekPayments {
+  status: WeekStatus;
+}
+
+/**
+ * First week "Mark fully paid" covers: the open week if they haven't paid it,
+ * else the week after; with no open week, the week after the last locked one.
+ * Null when there's nothing left to cover.
+ */
+export function fullPayStart(uid: string, weeks: readonly WeekState[]): number | null {
+  const open = weeks.filter((w) => w.status !== "locked").map((w) => w.week).sort((a, b) => a - b);
+  const locked = weeks.filter((w) => w.status === "locked").map((w) => w.week);
+  let start: number;
+  if (open.length > 0) {
+    const first = weeks.find((w) => w.week === open[0])!;
+    start = first.payments?.[uid] === true ? open[0] + 1 : open[0];
+  } else {
+    start = (locked.length ? Math.max(...locked) : 0) + 1;
+  }
+  return start > REGULAR_SEASON_WEEKS ? null : start;
 }
