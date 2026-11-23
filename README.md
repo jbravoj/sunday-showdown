@@ -83,6 +83,27 @@ Admin → **Weeks**. Each regular-season week (1–18) has one board at
 Players see the latest published week on the Board tab and can flip back to
 earlier weeks. Drafts are hidden from players by the Firestore rules.
 
+## Invite requests, join alerts and emailed invites
+
+- Someone who signs up without a code can tap **Request an invite** on the
+  join screen. That creates `inviteRequests/{uid}` and emails the admin.
+- Every admin page shows a banner while someone is waiting: an invite request
+  (→ Invites) or a player who joined and needs approval (→ Players). Joining
+  also emails the admin.
+- Admin → Invites lists requests with **Send invite**, which creates a
+  one-time code and emails it with the join link. The create form can email
+  an invite too, and optionally lock it to that address.
+
+Email goes out through a Gmail account with an app password. Set it up once:
+
+```sh
+firebase functions:secrets:set GMAIL_USER          # the Gmail address
+firebase functions:secrets:set GMAIL_APP_PASSWORD  # 16-letter app password
+```
+
+Admin alerts go to `GMAIL_USER`. If Gmail refuses, the site still works; the
+email is just skipped and logged.
+
 ## Season balances and "fully paid"
 
 The season is 18 weeks × $100 = $1,800 per player. Admin → **Players** shows

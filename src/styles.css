@@ -1873,3 +1873,124 @@ body::after {
 .player-money .balance {
   align-self: stretch;
 }
+
+/* ---- Admin alerts: someone's waiting on the admin ---- */
+.admin-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 178, 26, 0.55);
+  background:
+    radial-gradient(circle at 8% 50%, rgba(255, 178, 26, 0.22), transparent 40%),
+    linear-gradient(90deg, rgba(255, 122, 26, 0.18), rgba(90, 72, 245, 0.16));
+  box-shadow: 0 0 26px rgba(255, 122, 26, 0.22);
+  animation: bannerIn 0.4s ease-out;
+}
+.admin-alert-bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--hot);
+  color: var(--accent-ink);
+}
+.admin-alert-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ff4d6d;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
+.admin-alert-list {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-alert-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 6px 0;
+}
+.admin-alert-list li + li {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.admin-alert-text {
+  font-weight: 700;
+}
+.admin-alert-action {
+  color: #ffb27a;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-alert {
+    animation: none;
+  }
+}
+
+/* ---- Invite requests and emailed invites ---- */
+.request-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.request-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 12px 0;
+}
+.request-list li + li {
+  border-top: 1px solid var(--line);
+}
+.request-list p {
+  margin: 0;
+}
+.request-actions {
+  display: flex;
+  gap: 8px;
+}
+.request-actions .btn {
+  width: auto;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.join-request {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.join-request p {
+  margin: 0 0 10px;
+}

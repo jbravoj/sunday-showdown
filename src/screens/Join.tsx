@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { api, errorMessage } from "../firebase.ts";
-import { clearSavedInviteCode, getSavedInviteCode, refreshUser } from "../session.ts";
+import { clearSavedInviteCode, getSavedInviteCode, refreshUser, useMyInviteRequest } from "../session.ts";
 import {
   DISPLAY_NAME_MAX,
   normalizeInviteCode,
@@ -8,11 +8,30 @@ import {
 } from "../../shared/invite.ts";
 
 /** Signed in, no player record yet: redeem an invite and pick a name. */
-export default function Join({ suggestedName }: { suggestedName: string }) {
+export default function Join({ suggestedName, uid }: { suggestedName: string; uid: string }) {
   const [code, setCode] = useState(getSavedInviteCode() ?? "");
   const [name, setName] = useState(suggestedName.split(" ")[0] ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const myRequest = useMyInviteRequest(uid);
+  const [asking, setAsking] = useState(false);
+
+  async function onRequest() {
+    setError(null);
+    const nameCheck = validateDisplayName(name);
+    if (!nameCheck.ok) {
+      setError(`${nameCheck.error} (Fill in the name you want on your square first.)`);
+      return;
+    }
+    setAsking(true);
+    try {
+      await api.requestInvite({ displayName: nameCheck.name });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setAsking(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -75,6 +94,26 @@ export default function Join({ suggestedName }: { suggestedName: string }) {
         </button>
       </form>
       {error && <p className="error">{error}</p>}
+
+      <div className="join-request">
+        {myRequest?.status === "waiting" ? (
+          <p className="notice">
+            Request sent ✓ The admin's been notified. Your code will come to your email; check spam
+            if you don't see it.
+          </p>
+        ) : myRequest?.status === "invited" ? (
+          <p className="notice">
+            Your invite was emailed to {myRequest.email}. Check spam if you don't see it.
+          </p>
+        ) : (
+          <>
+            <p className="hint">No invite code? Ask the admin for one. They'll get a notice right away.</p>
+            <button className="btn" type="button" disabled={asking} onClick={onRequest}>
+              {asking ? "Asking…" : "Request an invite"}
+            </button>
+          </>
+        )}
+      </div>
     </section>
   );
 }

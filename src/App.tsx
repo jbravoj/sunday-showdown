@@ -1,5 +1,6 @@
 import { useAuth, usePlayer, useRoute } from "./session.ts";
 import { AdminSubnav, TabBar, TopBar } from "./Nav.tsx";
+import AdminAlerts from "./AdminAlerts.tsx";
 import AdminWeeks from "./screens/AdminWeeks.tsx";
 import AdminSim from "./screens/AdminSim.tsx";
 import { RULES_VERSION } from "../shared/rules.ts";
@@ -28,6 +29,7 @@ export default function App() {
     screen = (
       <>
         <AdminSubnav route={route} />
+        <AdminAlerts route={route} />
         <AdminWeeks />
       </>
     );
@@ -35,6 +37,7 @@ export default function App() {
     screen = (
       <>
         <AdminSubnav route={route} />
+        <AdminAlerts route={route} />
         <AdminSim />
       </>
     );
@@ -42,6 +45,7 @@ export default function App() {
     screen = (
       <>
         <AdminSubnav route={route} />
+        <AdminAlerts route={route} />
         <AdminInvites />
       </>
     );
@@ -49,13 +53,14 @@ export default function App() {
     screen = (
       <>
         <AdminSubnav route={route} />
+        <AdminAlerts route={route} />
         <AdminPlayers myUid={auth.user.uid} />
       </>
     );
   } else if (!playerState.loading && playerState.error) {
     screen = <p className="error">{playerState.error}</p>;
   } else if (!player) {
-    screen = <Join suggestedName={auth.user.displayName ?? ""} />;
+    screen = <Join suggestedName={auth.user.displayName ?? ""} uid={auth.user.uid} />;
   } else if (player.status === "removed") {
     screen = (
       <section className="card panel">
