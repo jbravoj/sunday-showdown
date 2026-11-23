@@ -67,9 +67,14 @@ export function WeekScoreCard({ week, liveSquares }: Omit<ViewProps, "uid">) {
 export function WeekBoardView({ week, liveSquares, uid }: ViewProps) {
   const { locked, squares, paid, seated } = weekFigures(week, liveSquares);
   const mine = uid ? squareOf(squares, uid) : null;
+  const result = locked ? week.result : undefined;
   return (
     <>
       <Board
+        winnerSquareId={result?.kind === "win" ? result.squareId : null}
+        winnerAmount={result?.kind === "win" ? formatCents(result.awardedCents) : null}
+        hotTopDigit={result ? result.homeScore % 10 : null}
+        hotLeftDigit={result ? result.awayScore % 10 : null}
         layout={seasonLayout(squares)}
         topDigits={locked && week.topDigits ? week.topDigits : NO_DIGITS}
         leftDigits={locked && week.leftDigits ? week.leftDigits : NO_DIGITS}

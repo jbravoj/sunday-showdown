@@ -232,6 +232,14 @@ export interface WeekBoard {
   /** Frozen at lock. */
   paidSquareIds?: string[];
   prize?: PrizeBreakdown;
+  /** Set once the game is final (Phase 7). Home = top, away = side. */
+  result?: {
+    kind: "win" | "rollover";
+    squareId: string | null;
+    awardedCents: number;
+    homeScore: number;
+    awayScore: number;
+  };
 }
 
 export type WeeksState =

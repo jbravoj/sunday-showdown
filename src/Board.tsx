@@ -9,6 +9,8 @@ interface BoardProps {
   leftTeam: string;
   /** Square to highlight as the winner, if any. */
   winnerSquareId?: string | null;
+  /** What the winner won, e.g. "$1,000", shown on their square. */
+  winnerAmount?: string | null;
   /** Squares to mark NOT PAID. */
   unpaidSquareIds?: readonly string[];
   /** Last digits of the final scores, lit up on the axes. */
@@ -29,6 +31,7 @@ function splitLabel(label: string): [string, string] {
 export default function Board(props: BoardProps) {
   const { layout, topDigits, leftDigits, winnerSquareId, unpaidSquareIds = [] } = props;
   const { hotTopDigit = null, hotLeftDigit = null, mySquareId = null, openSquareIds = [] } = props;
+  const winnerAmount = props.winnerAmount ?? null;
 
   // One tile per 2x2 block: the player's square, or a black block.
   const tiles = [];
@@ -55,8 +58,13 @@ export default function Board(props: BoardProps) {
         >
           <span className="tile-num">{num}.</span>
           <span className="tile-name">{name}</span>
+          {isWinner && winnerAmount && (
+            <span className="tile-amount" aria-label={`won ${winnerAmount}`}>
+              {winnerAmount}
+            </span>
+          )}
           {isUnpaid && <span className="tile-flag">NOT PAID</span>}
-          {isWinner && <span className="tile-flag tile-flag-win">WINNER</span>}
+          {isWinner && !winnerAmount && <span className="tile-flag tile-flag-win">WINNER</span>}
           {isMine && !isWinner && !isUnpaid && <span className="tile-flag tile-flag-mine">YOU</span>}
         </div>,
       );

@@ -1050,7 +1050,7 @@ details.panel .rules {
 .home-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "weeks" "score" "board" "square" "paid" "sample";
+  grid-template-areas: "banner" "weeks" "score" "board" "square" "paid" "sample";
   gap: 12px;
 }
 .home-grid > * {
@@ -1217,6 +1217,7 @@ details.panel .rules {
   .home-grid {
     grid-template-columns: minmax(0, 1fr) 380px;
     grid-template-areas:
+      "banner banner"
       "title title"
       "weeks weeks"
       "board score"
@@ -1224,7 +1225,7 @@ details.panel .rules {
       "board paid"
       "board sample"
       "board .";
-    grid-template-rows: auto auto auto auto auto auto 1fr;
+    grid-template-rows: auto auto auto auto auto auto auto 1fr;
     column-gap: 24px;
     row-gap: 16px;
     align-items: start;
@@ -1687,4 +1688,122 @@ body::after {
   font-style: italic;
   font-weight: 800;
   font-size: 1.3rem;
+}
+
+/* ---- Winner: amount on the square + banner ---- */
+.area-banner {
+  grid-area: banner;
+}
+.tile-amount {
+  margin-top: 2px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent-ink);
+  color: #ffd08a;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(0.55rem, 2.4vw, 1rem);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+@supports (font-size: 1cqi) {
+  .tile-amount {
+    font-size: clamp(0.5rem, 2.3cqi, 1rem);
+  }
+}
+.winner-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 4px;
+  padding: 16px 52px 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 178, 26, 0.6);
+  background:
+    radial-gradient(circle at 12% 50%, rgba(255, 178, 26, 0.25), transparent 45%),
+    linear-gradient(90deg, rgba(255, 122, 26, 0.22), rgba(90, 72, 245, 0.18));
+  box-shadow: 0 0 34px rgba(255, 122, 26, 0.3);
+  animation: bannerIn 0.5s ease-out;
+}
+.winner-banner-you {
+  border-color: #ffd08a;
+  animation: bannerIn 0.5s ease-out, glowPulse 2.4s ease-in-out 0.5s infinite;
+}
+@keyframes bannerIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .winner-banner,
+  .winner-banner-you {
+    animation: none;
+  }
+}
+.winner-trophy {
+  display: grid;
+  place-items: center;
+  flex: 0 0 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--hot);
+  color: var(--accent-ink);
+}
+.winner-text {
+  min-width: 0;
+}
+.winner-text p {
+  margin: 0;
+}
+.winner-kicker {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffb27a;
+}
+.winner-headline {
+  margin-top: 2px !important;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.winner-amount {
+  background: linear-gradient(180deg, #ffd08a, var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.winner-detail {
+  margin-top: 4px !important;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.winner-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.winner-close:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
 }
