@@ -149,3 +149,34 @@ test("lock snapshot with nobody paid and a rollover", () => {
   assert.deepEqual(snap.paidSquareIds, []);
   assert.equal(snap.prize.potCents, 100_000);
 });
+
+// ---------- regulation scores ----------
+test("regulation score sums quarters 1-4 and ignores overtime", () => {
+  const ev = (lines: number[][], completed = true) => ({
+    events: [
+      {
+        id: "g",
+        date: "2026-11-16T01:20Z",
+        status: { type: { completed, state: completed ? "post" : "in" } },
+        competitions: [
+          {
+            competitors: [
+              { homeAway: "home", team: { displayName: "H" }, linescores: lines[0].map((value) => ({ value })) },
+              { homeAway: "away", team: { displayName: "A" }, linescores: lines[1].map((value) => ({ value })) },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  // Real 2026 week 10 TNF line score: Giants 21, Commanders 24.
+  let g = parseScoreboard(ev([[0, 7, 7, 7], [0, 10, 7, 7]]))[0];
+  assert.deepEqual(g.regulation, { home: 21, away: 24 });
+  assert.equal(g.final, true);
+  // Tied after four, decided in OT: only regulation counts (17-17, not 23-17).
+  g = parseScoreboard(ev([[7, 3, 0, 7, 6], [0, 10, 7, 0, 0]]))[0];
+  assert.deepEqual(g.regulation, { home: 17, away: 17 });
+  // In progress or missing quarters: no regulation score yet.
+  assert.equal(parseScoreboard(ev([[7, 3, 0, 7], [0, 10, 7, 0]], false))[0].regulation, null);
+  assert.equal(parseScoreboard(ev([[7, 3], [0, 10]]))[0].regulation, null);
+});
