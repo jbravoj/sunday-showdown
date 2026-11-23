@@ -77,6 +77,7 @@ export const ADMIN_PAGES = [
   { path: "/weeks", label: "Weeks" },
   { path: "/players", label: "Players" },
   { path: "/invites", label: "Invites" },
+  { path: "/sim", label: "Simulator" },
 ];
 
 export function isAdminRoute(route: string): boolean {

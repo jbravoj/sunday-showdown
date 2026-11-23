@@ -83,6 +83,16 @@ Admin → **Weeks**. Each regular-season week (1–18) has one board at
 Players see the latest published week on the Board tab and can flip back to
 earlier weeks. Drafts are hidden from players by the Firestore rules.
 
+## Simulator
+
+Admin → **Simulator** runs any week end to end in the browser with 12 dummy
+players: it pulls the real Sunday night game from the schedule (2026 or
+2027), draws numbers, and applies the same rules as real boards. For a
+finished game it uses the real end-of-regulation score (overtime ignored);
+for a future game, type a score or tap **Random score**. Toggle who paid,
+leave squares open, set a rollover, and chain weeks with **Next week** to
+watch rollovers carry. Nothing is saved.
+
 ## Payments and auto-lock (Phase 6)
 
 Payments are collected outside the site; the admin records them. On Admin →

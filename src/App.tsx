@@ -1,6 +1,7 @@
 import { useAuth, usePlayer, useRoute } from "./session.ts";
 import { AdminSubnav, TabBar, TopBar } from "./Nav.tsx";
 import AdminWeeks from "./screens/AdminWeeks.tsx";
+import AdminSim from "./screens/AdminSim.tsx";
 import { RULES_VERSION } from "../shared/rules.ts";
 import AdminInvites from "./screens/AdminInvites.tsx";
 import AdminPlayers from "./screens/AdminPlayers.tsx";
@@ -28,6 +29,13 @@ export default function App() {
       <>
         <AdminSubnav route={route} />
         <AdminWeeks />
+      </>
+    );
+  } else if (route === "/sim" && auth.isAdmin) {
+    screen = (
+      <>
+        <AdminSubnav route={route} />
+        <AdminSim />
       </>
     );
   } else if (route === "/invites" && auth.isAdmin) {

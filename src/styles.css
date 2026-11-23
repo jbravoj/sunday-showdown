@@ -1590,3 +1590,101 @@ body::after {
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* ---- Simulator ---- */
+.subnav {
+  grid-template-columns: repeat(4, 1fr);
+}
+.subnav-item {
+  font-size: 0.85rem;
+}
+.sim-banner {
+  border-color: rgba(255, 122, 26, 0.5);
+}
+.sim-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.sim-game {
+  margin: 16px 0 4px;
+}
+.sim-matchup {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.sim-scores {
+  margin-top: 12px;
+}
+.sim-scores .btn {
+  min-height: 48px;
+}
+.sim-actions {
+  margin-top: 16px;
+}
+.sim-pay {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.sim-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px dashed var(--warn);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.sim-chip span {
+  font-size: 0.75rem;
+  color: var(--warn);
+}
+.sim-paid {
+  border: 1px solid var(--accent);
+  background: rgba(255, 122, 26, 0.12);
+}
+.sim-paid span {
+  color: #ffb27a;
+}
+.sim-result h2 {
+  margin-bottom: 6px;
+}
+.sim-win {
+  border-color: var(--accent);
+  box-shadow: 0 0 30px rgba(255, 122, 26, 0.3);
+}
+.sim-money {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.sim-money div {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.sim-money dt {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sim-money dd {
+  margin: 4px 0 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.3rem;
+}

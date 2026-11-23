@@ -24,6 +24,26 @@ export interface Game {
   home: Team;
   away: Team;
   networks: string[];
+  /** The game is over. */
+  final: boolean;
+  /**
+   * Score at the end of regulation (quarters 1-4 only; overtime never counts).
+   * Null until all four quarters are in.
+   */
+  regulation: { home: number; away: number } | null;
+}
+
+/** Sum of quarters 1-4 from a competitor's line score, or null if incomplete. */
+function regulationPoints(c: unknown): number | null {
+  const lines = (c as { linescores?: { value?: unknown }[] } | null)?.linescores;
+  if (!Array.isArray(lines) || lines.length < 4) return null;
+  let total = 0;
+  for (const q of lines.slice(0, 4)) {
+    const v = Number(q?.value);
+    if (!Number.isFinite(v) || v < 0) return null;
+    total += v;
+  }
+  return total;
 }
 
 function team(c: unknown): Team | null {
@@ -45,13 +65,20 @@ export function parseScoreboard(json: unknown): Game[] {
     const comp = (e.competitions as Record<string, unknown>[] | undefined)?.[0];
     const competitors = comp?.competitors as Record<string, unknown>[] | undefined;
     if (typeof e.id !== "string" || typeof e.date !== "string" || !competitors) continue;
-    const home = team(competitors.find((c) => c.homeAway === "home"));
-    const away = team(competitors.find((c) => c.homeAway === "away"));
+    const homeC = competitors.find((c) => c.homeAway === "home");
+    const awayC = competitors.find((c) => c.homeAway === "away");
+    const home = team(homeC);
+    const away = team(awayC);
     if (!home || !away || Number.isNaN(Date.parse(e.date))) continue;
     const networks = ((comp?.broadcasts as { names?: string[] }[] | undefined) ?? []).flatMap(
       (b) => b.names ?? [],
     );
-    games.push({ id: e.id, kickoff: new Date(e.date).toISOString(), home, away, networks });
+    const statusType = (e.status as { type?: { completed?: boolean; state?: string } } | undefined)?.type;
+    const final = statusType?.completed === true || statusType?.state === "post";
+    const rh = regulationPoints(homeC);
+    const ra = regulationPoints(awayC);
+    const regulation = final && rh !== null && ra !== null ? { home: rh, away: ra } : null;
+    games.push({ id: e.id, kickoff: new Date(e.date).toISOString(), home, away, networks, final, regulation });
   }
   return games;
 }
