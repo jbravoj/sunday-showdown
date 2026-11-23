@@ -1584,3 +1584,9 @@ body::after {
     display: none;
   }
 }
+
+.pay-link-off {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}

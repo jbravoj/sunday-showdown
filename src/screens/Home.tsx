@@ -2,6 +2,7 @@ import Board from "../Board.tsx";
 import { useState } from "react";
 import { WeekBoardView, WeekScoreCard, weekFigures } from "../WeekView.tsx";
 import { PAYMENT_LINKS } from "../paymentLinks.ts";
+import { paidSquareIds } from "../../shared/week.ts";
 import { REGULAR_SEASON_WEEKS } from "../../shared/schedule.ts";
 import { useSeason, useWeeks } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
@@ -46,6 +47,11 @@ export default function Home({ uid }: { uid: string }) {
   const shown = fig?.locked ? weekSquare : mine;
   const shownSquares = fig?.locked ? fig.squares : squares;
   const movedTo = fig?.locked && mine && mine !== weekSquare ? mine : null;
+  // The week players pay for: the latest published week that hasn't locked,
+  // whichever week is on screen.
+  const payWeek = [...weeks].reverse().find((w) => w.status === "open") ?? null;
+  const paidForPayWeek =
+    payWeek && mine ? paidSquareIds(squares, payWeek.payments ?? {}).includes(mine) : false;
 
   return (
     <div className="home-grid">
@@ -155,22 +161,11 @@ export default function Home({ uid }: { uid: string }) {
                   Week {current.week}: {paidThisWeek ? "Paid" : "Not paid"}
                 </p>
               )}
-              {current && current.status !== "locked" && paidThisWeek === false && (
-                <div className="pay-links">
-                  {PAYMENT_LINKS.map((link) => (
-                    <a key={link.href} className="btn btn-primary pay-link" href={link.href}>
-                      {link.label}
-                    </a>
-                  ))}
-                  {PAYMENT_LINKS.map((link) =>
-                    link.hint ? (
-                      <p key={`${link.href}-hint`} className="hint">
-                        {link.hint} The admin marks you paid once it comes through.
-                      </p>
-                    ) : null,
-                  )}
-                </div>
-              )}
+              <PayBox
+                payWeek={payWeek?.week ?? null}
+                paid={paidForPayWeek}
+                hasSquare={mine !== null}
+              />
               <p className="hint">
                 Row {SQUARE_BLOCKS[shown].row + 1}, column {SQUARE_BLOCKS[shown].col + 1} on the
                 board.{" "}
@@ -189,6 +184,7 @@ export default function Home({ uid }: { uid: string }) {
                 ? `You didn't have a square when week ${current!.week} locked. You're in square ${squareNumber(mine)} now.`
                 : "The admin hasn't assigned your square yet. Check back soon."}
             </p>
+            <PayBox payWeek={payWeek?.week ?? null} paid={false} hasSquare={mine !== null} />
           </div>
         )}
       </section>
@@ -221,6 +217,40 @@ export default function Home({ uid }: { uid: string }) {
         <summary>How a week is decided</summary>
         <SampleWeek />
       </details>
+    </div>
+  );
+}
+
+/**
+ * Pay buttons on the Your square card. Always visible so players know where
+ * to pay; live only while a week is open and they haven't been marked paid.
+ */
+function PayBox(props: { payWeek: number | null; paid: boolean; hasSquare: boolean }) {
+  const { payWeek, paid, hasSquare } = props;
+  if (payWeek !== null && paid) {
+    return <p className="paid-pill paid-yes">Week {payWeek}: Paid ✓</p>;
+  }
+  const live = payWeek !== null && hasSquare;
+  return (
+    <div className="pay-links">
+      {PAYMENT_LINKS.map((link) =>
+        live ? (
+          <a key={link.href} className="btn btn-primary pay-link" href={link.href}>
+            {link.label} · Week {payWeek}
+          </a>
+        ) : (
+          <span key={link.href} className="btn btn-primary pay-link pay-link-off" aria-disabled="true">
+            {link.label}
+          </span>
+        ),
+      )}
+      <p className="hint">
+        {!hasSquare
+          ? "Paying opens once you have a square."
+          : payWeek === null
+            ? "Payment opens when next week's board is posted."
+            : `${PAYMENT_LINKS[0]?.hint ?? ""} The admin marks you paid once it comes through.`}
+      </p>
     </div>
   );
 }
