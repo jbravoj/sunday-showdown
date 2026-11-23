@@ -170,10 +170,15 @@ export default function Home({ uid }: { uid: string }) {
         {shown ? (
           <>
             <div>
-              <p className="label">{fig?.locked ? `Your square · week ${current!.week}` : "Your square"}</p>
-              <p className="matchup">
-                {squareNumber(shown)} · {shownSquares[shown]!.name}
-              </p>
+              <div className="your-square-head">
+                <div>
+                  <p className="label">{fig?.locked ? `Your square · week ${current!.week}` : "Your square"}</p>
+                  <p className="matchup">
+                    {squareNumber(shown)} · {shownSquares[shown]!.name}
+                  </p>
+                </div>
+                <span className="square-badge">{squareNumber(shown)}</span>
+              </div>
               {current && paidThisWeek !== null && (
                 <p className={paidThisWeek ? "paid-pill paid-yes" : "paid-pill paid-no"}>
                   Week {current.week}: {paidThisWeek ? "Paid" : "Not paid"}
@@ -193,7 +198,6 @@ export default function Home({ uid }: { uid: string }) {
                   : "It's yours all season."}
               </p>
             </div>
-            <span className="square-badge">{squareNumber(shown)}</span>
           </>
         ) : (
           <div>
