@@ -1555,3 +1555,32 @@ body::after {
   background: var(--accent);
   box-shadow: 0 0 6px rgba(255, 122, 26, 0.7);
 }
+
+/* ---- Top bar: same width on every page ----
+   The top bar used to shrink with narrow pages (Admin, Rules), which wrapped
+   the logo and turned the motto into a tall stack. Now the page frame is
+   always full width on desktop; only the content under the bar narrows. */
+@media (min-width: 960px) {
+  .page {
+    max-width: 1320px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .page:not(.page-wide) > main {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .wordmark .title,
+  .topbar-motto,
+  .topnav-item {
+    white-space: nowrap;
+  }
+}
+/* Not enough room for the motto beside the tabs: drop it from the bar (it
+   still shows on the board and in the rules). */
+@media (min-width: 960px) and (max-width: 1180px) {
+  .topbar-motto {
+    display: none;
+  }
+}
