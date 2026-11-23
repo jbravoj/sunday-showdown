@@ -36,9 +36,11 @@ function callable<Req, Res>(name: string) {
 
 export const api = {
   createInvitation: callable<
-    { note?: string; email?: string },
-    { id: string; code: string; expiresAtMs: number }
+    { note?: string; email?: string; lock?: boolean; send?: boolean; requestUid?: string },
+    { id: string; code: string; expiresAtMs: number; emailed: boolean }
   >("createInvitation"),
+  requestInvite: callable<{ displayName: string }, { ok: true }>("requestInvite"),
+  dismissInviteRequest: callable<{ uid: string }, { ok: true }>("dismissInviteRequest"),
   revokeInvitation: callable<{ id: string }, { ok: true }>("revokeInvitation"),
   redeemInvitation: callable<{ code: string; displayName: string }, { ok: true }>(
     "redeemInvitation",

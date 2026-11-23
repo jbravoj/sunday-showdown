@@ -1,3 +1,4 @@
+import { RULES_VERSION } from "../shared/rules.ts";
 import { useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
@@ -292,4 +293,75 @@ export function kickoffLabel(kickoff: Timestamp): string {
   const day = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   return `${day} · ${time}`;
+}
+
+// ---------- invite requests and join alerts ----------
+
+export interface InviteRequest {
+  uid: string;
+  email: string;
+  displayName: string;
+  status: "waiting" | "invited";
+  requestedAt: Timestamp | null;
+  invitedAt: Timestamp | null;
+}
+
+/** The signed-in person's own invite request, if they made one. */
+export function useMyInviteRequest(uid: string | null): InviteRequest | null {
+  const [state, setState] = useState<InviteRequest | null>(null);
+  useEffect(() => {
+    if (!uid) return;
+    return onSnapshot(
+      doc(db, "inviteRequests", uid),
+      (snap) => setState(snap.exists() ? ({ uid, ...snap.data() } as InviteRequest) : null),
+      () => setState(null),
+    );
+  }, [uid]);
+  return state;
+}
+
+/** Admin: everyone who asked for an invite, oldest first. */
+export function useInviteRequests(enabled: boolean): InviteRequest[] {
+  const [rows, setRows] = useState<InviteRequest[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    return onSnapshot(
+      collection(db, "inviteRequests"),
+      (snap) =>
+        setRows(
+          snap.docs
+            .map((d) => ({ uid: d.id, ...d.data() }) as InviteRequest)
+            .sort((a, b) => (a.requestedAt?.toMillis() ?? 0) - (b.requestedAt?.toMillis() ?? 0)),
+        ),
+      () => setRows([]),
+    );
+  }, [enabled]);
+  return rows;
+}
+
+export interface PendingPlayer {
+  uid: string;
+  displayName: string;
+  readyToApprove: boolean;
+}
+
+/** Admin: players who used an invite and are waiting on approval. */
+export function usePendingPlayers(enabled: boolean): PendingPlayer[] {
+  const [rows, setRows] = useState<PendingPlayer[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    return onSnapshot(
+      query(collection(db, "players"), where("status", "==", "pending")),
+      (snap) =>
+        setRows(
+          snap.docs.map((d) => ({
+            uid: d.id,
+            displayName: String(d.get("displayName") ?? "Someone"),
+            readyToApprove: d.get("rulesVersion") === RULES_VERSION,
+          })),
+        ),
+      () => setRows([]),
+    );
+  }, [enabled]);
+  return rows;
 }

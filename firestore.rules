@@ -29,6 +29,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Someone signed up without a code and asked for one. They can see their
+    // own request; the admin sees all of them.
+    match /inviteRequests/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // The season's squares (who sits where): approved players and the admin.
     match /seasons/{season} {
       allow read: if isAdmin() || isApprovedPlayer();

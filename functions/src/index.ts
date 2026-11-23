@@ -52,6 +52,8 @@ import {
   type WeekStatus,
 } from "../../shared/week.ts";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { inviteMail, inviteRequestMail, playerJoinedMail } from "../../shared/notify.ts";
+import { MAIL_SECRETS, sendMail } from "./mail.ts";
 import { logger } from "firebase-functions/v2";
 
 initializeApp();
@@ -63,6 +65,7 @@ const db = getFirestore();
 const invitations = db.collection("invitations");
 const players = db.collection("players");
 const auditLog = db.collection("auditLog");
+const inviteRequests = db.collection("inviteRequests");
 const seasonRef = db.collection("seasons").doc(CURRENT_SEASON);
 
 // ---------- helpers ----------
@@ -137,16 +140,39 @@ const INVITE_ERRORS = {
 
 // ---------- admin: invitations ----------
 
-/** Admin creates a one-time invite. Returns the code once; only its hash is stored. */
-export const createInvitation = onCall(async (req) => {
+/**
+ * Admin creates a one-time invite. Returns the code once; only its hash is
+ * stored. Options:
+ * - email + send: emails the code and link to that address.
+ * - email + lock (the default when an email is given, for older clients):
+ *   only that address can use it.
+ * - requestUid: answers someone's invite request: uses their name and email,
+ *   emails them, and never locks (they may not have verified their email).
+ */
+export const createInvitation = onCall({ secrets: MAIL_SECRETS }, async (req) => {
   const admin = requireAdmin(req);
   const data = (req.data ?? {}) as Record<string, unknown>;
-  const note = optionalStr(data.note, "Note", 60);
+  let note = optionalStr(data.note, "Note", 60);
   const emailRaw = optionalStr(data.email, "Email", 254);
-  const email = emailRaw ? emailRaw.toLowerCase() : null;
+  let email = emailRaw ? emailRaw.toLowerCase() : null;
+  const requestUid = optionalStr(data.requestUid, "Request", 128);
+  let send = data.send === true;
+  let lock = data.lock === undefined ? email !== null : data.lock === true;
+
+  let requestRef: DocumentReference | null = null;
+  if (requestUid !== null) {
+    requestRef = inviteRequests.doc(requestUid);
+    const reqSnap = await requestRef.get();
+    if (!reqSnap.exists) throw new HttpsError("not-found", "That request is gone. They may have joined already.");
+    email = String(reqSnap.get("email"));
+    note = note ?? (String(reqSnap.get("displayName") ?? "") || null);
+    send = true;
+    lock = false;
+  }
   if (email !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new HttpsError("invalid-argument", "That email address doesn't look right.");
   }
+  if (send && email === null) throw new HttpsError("invalid-argument", "Add their email to send the invite.");
 
   const code = generateInviteCode(randomInt);
   const ref = invitations.doc(inviteDocId(code));
@@ -156,7 +182,8 @@ export const createInvitation = onCall(async (req) => {
     tx.create(ref, {
       codeHint: code.slice(-3),
       note,
-      email,
+      email: lock ? email : null,
+      sentTo: send ? email : null,
       createdBy: admin.uid,
       createdAt: FieldValue.serverTimestamp(),
       expiresAt,
@@ -166,10 +193,28 @@ export const createInvitation = onCall(async (req) => {
       usedByName: null,
       usedAt: null,
     });
-    audit(tx, admin.uid, "invitation.create", ref, { note, email });
+    if (requestRef) {
+      tx.update(requestRef, { status: "invited", invitedAt: FieldValue.serverTimestamp(), invitationId: ref.id });
+    }
+    audit(tx, admin.uid, "invitation.create", ref, { note, email, lock, send, requestUid });
   });
 
-  return { id: ref.id, code, expiresAtMs: expiresAt.toMillis() };
+  const emailed = send && email !== null ? await sendMail(inviteMail(code, note, expiresAt.toDate()), email) : false;
+  return { id: ref.id, code, expiresAtMs: expiresAt.toMillis(), emailed };
+});
+
+/** Admin clears someone's invite request without sending one. */
+export const dismissInviteRequest = onCall(async (req) => {
+  const admin = requireAdmin(req);
+  const uid = str((req.data as Record<string, unknown> | null)?.uid, "Request", 128);
+  const ref = inviteRequests.doc(uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    tx.delete(ref);
+    audit(tx, admin.uid, "inviteRequest.dismiss", ref, { email: snap.get("email") });
+  });
+  return { ok: true };
 });
 
 /** Admin cancels an unused invite. */
@@ -196,10 +241,44 @@ export const revokeInvitation = onCall(async (req) => {
 // ---------- players: registration ----------
 
 /**
+ * Signed in but no code: ask the admin for an invite. Emails the admin the
+ * first time (and again if an earlier request was already answered).
+ */
+export const requestInvite = onCall({ secrets: MAIL_SECRETS }, async (req) => {
+  const caller = requireUser(req);
+  const nameCheck = validateDisplayName(str((req.data as Record<string, unknown> | null)?.displayName, "Name", 100));
+  if (!nameCheck.ok) throw new HttpsError("invalid-argument", nameCheck.error);
+  const displayName = nameCheck.name;
+  const ref = inviteRequests.doc(caller.uid);
+
+  const isNew = await db.runTransaction(async (tx) => {
+    const [playerSnap, reqSnap] = await Promise.all([tx.get(players.doc(caller.uid)), tx.get(ref)]);
+    if (playerSnap.exists) throw new HttpsError("already-exists", "You're already registered.");
+    if (reqSnap.exists && reqSnap.get("status") === "waiting") {
+      tx.update(ref, { displayName });
+      return false;
+    }
+    tx.set(ref, {
+      email: caller.email,
+      displayName,
+      status: "waiting",
+      requestedAt: FieldValue.serverTimestamp(),
+      invitedAt: null,
+      invitationId: null,
+    });
+    audit(tx, caller.uid, "inviteRequest.create", ref, { displayName });
+    return true;
+  });
+
+  if (isNew) await sendMail(inviteRequestMail(displayName, caller.email));
+  return { ok: true };
+});
+
+/**
  * A signed-in player redeems an invite code and picks the name for their
  * square. Creates their player record as "pending" (admin approves in Phase 3).
  */
-export const redeemInvitation = onCall(async (req) => {
+export const redeemInvitation = onCall({ secrets: MAIL_SECRETS }, async (req) => {
   const caller = requireUser(req);
   const data = (req.data ?? {}) as Record<string, unknown>;
   const code = normalizeInviteCode(str(data.code, "Invite code", 40));
@@ -211,7 +290,7 @@ export const redeemInvitation = onCall(async (req) => {
   const inviteRef = invitations.doc(inviteDocId(code));
   const playerRef = players.doc(caller.uid);
 
-  await db.runTransaction(async (tx) => {
+  const joined = await db.runTransaction(async (tx) => {
     const [inviteSnap, playerSnap, allPlayers] = await Promise.all([
       tx.get(inviteRef),
       tx.get(playerRef),
@@ -222,7 +301,7 @@ export const redeemInvitation = onCall(async (req) => {
 
     if (playerSnap.exists) {
       // Retrying after a dropped connection: already done.
-      if (inviteSnap.get("usedBy") === caller.uid) return;
+      if (inviteSnap.get("usedBy") === caller.uid) return false;
       const status = playerSnap.get("status") as PlayerStatus;
       throw new HttpsError(
         "already-exists",
@@ -278,9 +357,12 @@ export const redeemInvitation = onCall(async (req) => {
       usedByName: displayName,
       usedAt: FieldValue.serverTimestamp(),
     });
+    tx.delete(inviteRequests.doc(caller.uid));
     audit(tx, caller.uid, "player.register", playerRef, { displayName });
+    return true;
   });
 
+  if (joined) await sendMail(playerJoinedMail(displayName, caller.email));
   return { ok: true };
 });
 
