@@ -60,7 +60,7 @@ export function WeekScoreCard({ week, liveSquares, prepaid }: Omit<ViewProps, "u
 
       <p className={`status-line status-${week.status}`}>
         {week.status === "draft" && "Draft · only you can see this"}
-        {week.status === "open" && `Pay before the board locks ${lockTimeLabel(week)}. NO PAY • NO PLAY.`}
+        {week.status === "open" && `Pay by ${lockTimeLabel(week)} · NO PAY • NO PLAY`}
         {week.status === "locked" && "Locked · numbers drawn · payments final"}
       </p>
     </>
