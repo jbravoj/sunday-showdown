@@ -2,6 +2,7 @@ import Board from "../Board.tsx";
 import { useState } from "react";
 import { WeekBoardView, WeekScoreCard, weekFigures } from "../WeekView.tsx";
 import { PAYMENT_LINKS } from "../paymentLinks.ts";
+import WinnerBanner from "../WinnerBanner.tsx";
 import { paidSquareIds } from "../../shared/week.ts";
 import { REGULAR_SEASON_WEEKS } from "../../shared/schedule.ts";
 import { useSeason, useWeeks } from "../session.ts";
@@ -50,11 +51,28 @@ export default function Home({ uid }: { uid: string }) {
   // The week players pay for: the latest published week that hasn't locked,
   // whichever week is on screen.
   const payWeek = [...weeks].reverse().find((w) => w.status === "open") ?? null;
+  // Banner: the most recent week that has a result, if it had a winner.
+  const lastResult = [...weeks].reverse().find((w) => w.result) ?? null;
+  const winWeek = lastResult?.result?.kind === "win" && lastResult.squares ? lastResult : null;
+  const winSeat = winWeek ? winWeek.squares![winWeek.result!.squareId!] : null;
   const paidForPayWeek =
     payWeek && mine ? paidSquareIds(squares, payWeek.payments ?? {}).includes(mine) : false;
 
   return (
     <div className="home-grid">
+      {winWeek && winSeat && (
+        <div className="area-banner">
+          <WinnerBanner
+            id={`${CURRENT_SEASON}-${winWeek.id}`}
+            weekLabel={`Week ${winWeek.week}`}
+            name={winSeat.name}
+            squareNumber={squareNumber(winWeek.result!.squareId!)}
+            amount={formatCents(winWeek.result!.awardedCents)}
+            isYou={winSeat.uid === uid}
+            detail={`${winWeek.away.short} ${winWeek.result!.awayScore}, ${winWeek.home.short} ${winWeek.result!.homeScore}`}
+          />
+        </div>
+      )}
       <div className="area-title">
         <h1 className="page-title">
           {current
@@ -291,6 +309,7 @@ function SampleWeek() {
         topTeam={SAMPLE.topTeam}
         leftTeam={SAMPLE.leftTeam}
         winnerSquareId={outcome.kind === "win" ? outcome.squareId : null}
+        winnerAmount={outcome.kind === "win" ? formatCents(outcome.awardedCents) : null}
         hotTopDigit={outcome.topDigit}
         hotLeftDigit={outcome.leftDigit}
       />

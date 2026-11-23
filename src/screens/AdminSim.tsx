@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Board from "../Board.tsx";
+import WinnerBanner from "../WinnerBanner.tsx";
 import { computePrize, formatCents, resolveWeek, shuffleDigits } from "../../shared/game.ts";
 import { SQUARE_IDS, emptySquares, seasonLayout, squareNumber } from "../../shared/season.ts";
 import {
@@ -253,6 +254,17 @@ export default function AdminSim() {
         </div>
       </section>
 
+      {outcome?.kind === "win" && (
+        <WinnerBanner
+          weekLabel={`${year} week ${week} (simulated)`}
+          name={squares[outcome.squareId]!.name}
+          squareNumber={squareNumber(outcome.squareId)}
+          amount={formatCents(outcome.awardedCents)}
+          isYou={false}
+          detail={`${awayName} ${awayScore}, ${homeName} ${homeScore}`}
+        />
+      )}
+
       <section className={`card panel sim-result${outcome?.kind === "win" ? " sim-win" : ""}`}>
         {!outcome && <p className="hint">Enter a score (or tap Random score) to see who wins.</p>}
         {outcome?.kind === "win" && (
@@ -301,6 +313,7 @@ export default function AdminSim() {
         topTeam={`${homeName} (home)`}
         leftTeam={awayName}
         winnerSquareId={outcome?.kind === "win" ? outcome.squareId : null}
+        winnerAmount={outcome?.kind === "win" ? formatCents(outcome.awardedCents) : null}
         hotTopDigit={outcome ? outcome.topDigit : null}
         hotLeftDigit={outcome ? outcome.leftDigit : null}
         openSquareIds={SQUARE_IDS.filter((id) => squares[id] === null)}
