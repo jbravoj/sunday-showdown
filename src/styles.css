@@ -739,6 +739,9 @@ details.panel .rules {
 .your-square .hint {
   margin-top: 4px;
 }
+.your-square .paid-pill {
+  margin-right: 8px;
+}
 .square-badge {
   display: grid;
   place-items: center;
