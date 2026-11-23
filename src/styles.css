@@ -1037,6 +1037,20 @@ details.panel .rules {
   display: grid;
   place-items: center;
   text-decoration: none;
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.your-square-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.your-square-head > div {
+  min-width: 0;
 }
 .pay-links .hint {
   margin: 0;
