@@ -11,6 +11,9 @@ import {
 import { STATUS_ORDER, type PlayerAction } from "../../shared/players.ts";
 import { RULES_VERSION } from "../../shared/rules.ts";
 import AdminSquares from "./AdminSquares.tsx";
+import { SeasonBalance } from "./Home.tsx";
+import { useSeason, useWeeks } from "../session.ts";
+import { fullPayStart, seasonTally } from "../../shared/week.ts";
 
 interface PlayerRow {
   uid: string;
@@ -38,6 +41,12 @@ export default function AdminPlayers({ myUid }: { myUid: string }) {
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ uid: string; name: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirmFull, setConfirmFull] = useState<string | null>(null);
+  const weeksState = useWeeks(true);
+  const season = useSeason(true);
+  const weeks = weeksState.loading ? [] : weeksState.weeks;
+  const prepaid = season.loading ? {} : season.prepaid;
 
   useEffect(
     () =>
@@ -61,8 +70,12 @@ export default function AdminPlayers({ myUid }: { myUid: string }) {
   async function run(uid: string, action: () => Promise<unknown>) {
     setBusyUid(uid);
     setError(null);
+    setNotice(null);
+    setConfirmFull(null);
     try {
-      await action();
+      const res = await action();
+      const summary = (res as { summary?: string } | undefined)?.summary;
+      if (summary) setNotice(summary);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -107,6 +120,7 @@ export default function AdminPlayers({ myUid }: { myUid: string }) {
             : "Everyone who redeemed an invite shows up here. Removing a player frees their seat."}
         </p>
         {error && <p className="error">{error}</p>}
+        {notice && <p className="notice">{notice}</p>}
         {listError && <p className="error">{listError}</p>}
         {rows === null && !listError && <p className="hint">Loading…</p>}
         {rows?.length === 0 && <p className="hint">No players yet. Send some invites.</p>}
@@ -188,6 +202,53 @@ export default function AdminPlayers({ myUid }: { myUid: string }) {
                       {status === "approved" && !rulesOk && (
                         <p className="hint warn">Needs to accept the updated rules</p>
                       )}
+                      {status === "approved" &&
+                        (() => {
+                          const tally = seasonTally(p.uid, weeks, prepaid);
+                          const start = fullPayStart(p.uid, weeks);
+                          const covers = start === null ? 0 : 18 - start + 1;
+                          return (
+                            <div className="player-money">
+                              <SeasonBalance
+                                paidCents={tally.paidCents}
+                                leftCents={tally.leftCents}
+                                fullyPaidFrom={tally.fullyPaidFrom}
+                              />
+                              {tally.fullyPaidFrom !== null ? (
+                                <button
+                                  className="link link-small"
+                                  disabled={busy}
+                                  onClick={() => run(p.uid, () => api.markFullyPaid({ uid: p.uid, undo: true }))}
+                                >
+                                  Undo fully paid
+                                </button>
+                              ) : start !== null && tally.leftCents > 0 ? (
+                                confirmFull === p.uid ? (
+                                  <div className="confirm-row">
+                                    <button
+                                      className="btn btn-small btn-primary"
+                                      disabled={busy}
+                                      onClick={() => run(p.uid, () => api.markFullyPaid({ uid: p.uid }))}
+                                    >
+                                      Confirm: weeks {start}–18 (${covers * 100})
+                                    </button>
+                                    <button className="btn btn-small btn-ghost" onClick={() => setConfirmFull(null)}>
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    className="btn btn-small btn-ghost"
+                                    disabled={busy}
+                                    onClick={() => setConfirmFull(p.uid)}
+                                  >
+                                    Mark fully paid
+                                  </button>
+                                )
+                              ) : null}
+                            </div>
+                          );
+                        })()}
                     </div>
 
                     <div className="player-actions">

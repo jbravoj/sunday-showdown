@@ -3,7 +3,7 @@ import { useState } from "react";
 import { WeekBoardView, WeekScoreCard, weekFigures } from "../WeekView.tsx";
 import { PAYMENT_LINKS } from "../paymentLinks.ts";
 import WinnerBanner from "../WinnerBanner.tsx";
-import { paidSquareIds } from "../../shared/week.ts";
+import { SEASON_TOTAL_CENTS, isPaidFor, seasonTally } from "../../shared/week.ts";
 import { REGULAR_SEASON_WEEKS } from "../../shared/schedule.ts";
 import { useSeason, useWeeks } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
@@ -32,7 +32,7 @@ export default function Home({ uid }: { uid: string }) {
   if (season.loading || weeksState.loading) return <p className="coming">Loading…</p>;
   if (season.error) return <p className="error">{season.error}</p>;
 
-  const { squares } = season;
+  const { squares, prepaid } = season;
   const weeks = weeksState.weeks;
   // Latest published week by default; players can flip back to earlier ones.
   const current = weeks.find((w) => w.week === picked) ?? weeks[weeks.length - 1] ?? null;
@@ -40,7 +40,7 @@ export default function Home({ uid }: { uid: string }) {
   const open = SQUARE_IDS.filter((id) => squares[id] === null);
   const mine = squareOf(squares, uid);
   // Paid status for the week on screen (frozen once it locks).
-  const fig = current ? weekFigures(current, squares) : null;
+  const fig = current ? weekFigures(current, squares, prepaid) : null;
   const weekSquare = fig ? squareOf(fig.squares, uid) : null;
   const paidThisWeek = fig && weekSquare ? fig.paid.includes(weekSquare) : null;
   // A locked week froze who sat where; show the square from that week, and
@@ -55,8 +55,8 @@ export default function Home({ uid }: { uid: string }) {
   const lastResult = [...weeks].reverse().find((w) => w.result) ?? null;
   const winWeek = lastResult?.result?.kind === "win" && lastResult.squares ? lastResult : null;
   const winSeat = winWeek ? winWeek.squares![winWeek.result!.squareId!] : null;
-  const paidForPayWeek =
-    payWeek && mine ? paidSquareIds(squares, payWeek.payments ?? {}).includes(mine) : false;
+  const paidForPayWeek = payWeek ? isPaidFor(uid, payWeek.week, payWeek.payments ?? {}, prepaid) : false;
+  const tally = seasonTally(uid, weeks, prepaid);
 
   return (
     <div className="home-grid">
@@ -126,7 +126,7 @@ export default function Home({ uid }: { uid: string }) {
 
       <div className="area-score">
         {current ? (
-          <WeekScoreCard week={current} liveSquares={squares} />
+          <WeekScoreCard week={current} liveSquares={squares} prepaid={prepaid} />
         ) : (
           <section className="card scoreline">
             <div>
@@ -146,7 +146,7 @@ export default function Home({ uid }: { uid: string }) {
 
       <div className="area-board">
         {current ? (
-          <WeekBoardView week={current} liveSquares={squares} uid={uid} />
+          <WeekBoardView week={current} liveSquares={squares} uid={uid} prepaid={prepaid} />
         ) : (
           <>
             <Board
@@ -184,6 +184,7 @@ export default function Home({ uid }: { uid: string }) {
                 paid={paidForPayWeek}
                 hasSquare={mine !== null}
               />
+              <SeasonBalance paidCents={tally.paidCents} leftCents={tally.leftCents} fullyPaidFrom={tally.fullyPaidFrom} />
               <p className="hint">
                 Row {SQUARE_BLOCKS[shown].row + 1}, column {SQUARE_BLOCKS[shown].col + 1} on the
                 board.{" "}
@@ -269,6 +270,42 @@ function PayBox(props: { payWeek: number | null; paid: boolean; hasSquare: boole
             ? "Payment opens when next week's board is posted."
             : `${PAYMENT_LINKS[0]?.hint ?? ""} The admin marks you paid once it comes through.`}
       </p>
+    </div>
+  );
+}
+
+/** Season money: paid in so far and what's left of the $1,800 season. */
+export function SeasonBalance(props: { paidCents: number; leftCents: number; fullyPaidFrom: number | null }) {
+  const pct = Math.round((props.paidCents / SEASON_TOTAL_CENTS) * 100);
+  return (
+    <div className="balance">
+      <div className="balance-row">
+        <span>
+          Season paid <strong>{formatCents(props.paidCents)}</strong>
+        </span>
+        <span>
+          {props.leftCents === 0 ? (
+            <strong className="balance-done">Fully paid ✓</strong>
+          ) : (
+            <>
+              Left <strong>{formatCents(props.leftCents)}</strong>
+            </>
+          )}
+        </span>
+      </div>
+      <div
+        className="balance-bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-label="Season paid"
+      >
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      {props.fullyPaidFrom !== null && (
+        <p className="hint">Paid up through week 18 (covered from week {props.fullyPaidFrom}).</p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import WeekView, { weekFigures } from "../WeekView.tsx";
+import { shareTicket, unpaidIn } from "../shareImage.ts";
 import { api, errorMessage } from "../firebase.ts";
 import { useSeason, useWeeks, type WeekBoard } from "../session.ts";
 import { CURRENT_SEASON, SQUARE_IDS, squareNumber, type Seat } from "../../shared/season.ts";
@@ -123,11 +124,12 @@ export default function AdminWeeks() {
 
       {board ? (
         <>
-          <WeekView week={board} liveSquares={season.squares} uid={null} />
+          <WeekView week={board} liveSquares={season.squares} uid={null} prepaid={season.prepaid} />
 
           <Payments
             board={board}
             liveSquares={season.squares}
+            prepaid={season.prepaid}
             busy={busy}
             onToggle={(uid, paid) => run(() => api.setPayment({ week: selected, uid, paid }))}
           />
@@ -191,7 +193,46 @@ export default function AdminWeeks() {
               </div>
             )}
             {board.status === "locked" && (
-              <p className="hint">Locked boards are permanent. Scores and the winner come in a later phase.</p>
+              <>
+                <button
+                  className="btn btn-primary"
+                  disabled={busy}
+                  onClick={() =>
+                    run(async () => {
+                      const fig = weekFigures(board, season.squares, season.prepaid);
+                      const how = await shareTicket({
+                        week: board.week,
+                        kickoff: board.kickoff.toDate(),
+                        home: board.home,
+                        away: board.away,
+                        squares: fig.squares,
+                        topDigits: board.topDigits ?? [],
+                        leftDigits: board.leftDigits ?? [],
+                        potCents: fig.potCents,
+                        paidCount: fig.paid.length,
+                        seatedCount: fig.seated.length,
+                        unpaidSquareIds: unpaidIn(fig.squares, fig.paid),
+                        winner:
+                          board.result?.kind === "win" && board.result.squareId
+                            ? { squareId: board.result.squareId, amountCents: board.result.awardedCents }
+                            : null,
+                      });
+                      return {
+                        summary:
+                          how === "shared"
+                            ? `Week ${board.week} share image ready.`
+                            : `Saved sunday-showdown-week-${board.week}.jpg to your downloads.`,
+                      };
+                    })
+                  }
+                >
+                  {busy ? "Making image…" : "Share image"}
+                </button>
+                <p className="hint">
+                  Makes a 1080×1080 "game ticket" image of this board with both teams' colors and logos. On a
+                  phone it opens the share sheet; on a computer it downloads a JPG.
+                </p>
+              </>
             )}
           </section>
         </>
@@ -242,11 +283,12 @@ export default function AdminWeeks() {
 function Payments(props: {
   board: WeekBoard;
   liveSquares: Record<string, Seat | null>;
+  prepaid: Record<string, number>;
   busy: boolean;
   onToggle: (uid: string, paid: boolean) => void;
 }) {
-  const { board, liveSquares, busy, onToggle } = props;
-  const { locked, squares, paid, seated, potCents } = weekFigures(board, liveSquares);
+  const { board, liveSquares, prepaid, busy, onToggle } = props;
+  const { locked, squares, paid, seated, potCents } = weekFigures(board, liveSquares, prepaid);
 
   return (
     <section className="card panel">
@@ -273,6 +315,10 @@ function Payments(props: {
               {locked ? (
                 <span className={isPaid ? "paid-pill paid-yes" : "paid-pill paid-no"}>
                   {isPaid ? "Paid" : "Not paid"}
+                </span>
+              ) : prepaid[seat.uid] !== undefined && board.week >= prepaid[seat.uid] ? (
+                <span className="paid-pill paid-yes" title={`Fully paid from week ${prepaid[seat.uid]}`}>
+                  Fully paid
                 </span>
               ) : (
                 <button

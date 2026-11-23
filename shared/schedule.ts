@@ -15,6 +15,15 @@ export interface Team {
   short: string;
   /** "CIN" */
   abbr: string;
+  /** Team colors from the feed, "#fb4f14"; null when unknown (typed-in matchups). */
+  color: string | null;
+  alt: string | null;
+  /** Official logo image URL from the feed; null when unknown. */
+  logo: string | null;
+}
+
+function hex(v: unknown): string | null {
+  return typeof v === "string" && /^[0-9a-f]{6}$/i.test(v) ? `#${v.toLowerCase()}` : null;
 }
 
 export interface Game {
@@ -53,6 +62,9 @@ function team(c: unknown): Team | null {
     name: t.displayName,
     short: typeof t.shortDisplayName === "string" ? t.shortDisplayName : t.displayName,
     abbr: typeof t.abbreviation === "string" ? t.abbreviation : "",
+    color: hex(t.color),
+    alt: hex(t.alternateColor),
+    logo: typeof t.logo === "string" && t.logo.startsWith("https://") ? t.logo : null,
   };
 }
 

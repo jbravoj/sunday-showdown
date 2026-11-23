@@ -59,6 +59,9 @@ export const api = {
     | { op: "publish" | "lock" | "delete"; week: number },
     { ok: true; summary: string }
   >("manageWeek"),
+  markFullyPaid: callable<{ uid: string; undo?: boolean }, { ok: true; summary: string }>(
+    "markFullyPaid",
+  ),
   setPayment: callable<{ week: number; uid: string; paid: boolean }, { ok: true; summary: string }>(
     "setPayment",
   ),

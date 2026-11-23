@@ -1807,3 +1807,48 @@ body::after {
   color: var(--text);
   background: rgba(255, 255, 255, 0.08);
 }
+
+/* ---- Season balance ---- */
+.balance {
+  margin-top: 12px;
+}
+.balance-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.balance-row strong {
+  color: var(--text);
+}
+.balance-done {
+  color: var(--accent) !important;
+}
+.balance-bar {
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.balance-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--hot);
+}
+.balance .hint {
+  margin-top: 6px;
+}
+.player-money {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+  max-width: 420px;
+}
+.player-money .balance {
+  align-self: stretch;
+}
