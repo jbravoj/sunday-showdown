@@ -51,6 +51,7 @@ export const api = {
     { ok: true }
   >("setPlayerStatus"),
   renamePlayer: callable<{ uid: string; displayName: string }, { ok: true }>("renamePlayer"),
+  pickSquare: callable<{ squareId: string }, { ok: true; summary: string }>("pickSquare"),
   manageSquares: callable<
     { op: "draw" } | { op: "clear"; squareId: string } | { op: "place"; squareId: string; uid: string },
     { ok: true; summary: string }

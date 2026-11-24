@@ -91,7 +91,8 @@ export default function App() {
       </section>
     );
   } else {
-    screen = <Home uid={auth.user.uid} />;
+    const pickFrom = player.pickWindowFrom ?? player.approvedAt ?? null;
+    screen = <Home uid={auth.user.uid} pickFromMs={pickFrom ? pickFrom.toMillis() : null} />;
     wide = true;
   }
 

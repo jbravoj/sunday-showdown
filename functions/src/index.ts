@@ -30,8 +30,12 @@ import {
   CURRENT_SEASON,
   SQUARE_IDS,
   applySquareOp,
+  claimSquare,
   normalizeSquares,
+  pickDeadline,
   renameSeat,
+  seatAtRandom,
+  squareOf,
   vacate,
   type SquareOp,
 } from "../../shared/season.ts";
@@ -448,6 +452,8 @@ export const setPlayerStatus = onCall(async (req) => {
       ...(action === "approve" ? { approvedAt: stamp, approvedBy: admin.uid } : {}),
       ...(action === "remove" ? { removedAt: stamp, removedBy: admin.uid } : {}),
       ...(action === "reinstate" ? { reinstatedAt: stamp } : {}),
+      // Newly approved players get 24 hours to pick their own square.
+      ...(check.next === "approved" ? { pickWindowFrom: stamp } : {}),
     });
     audit(tx, admin.uid, `player.${action}`, playerRef, { from: status, to: check.next });
     // A removed player's square goes open; the admin can seat a replacement.
@@ -546,6 +552,73 @@ export const manageSquares = onCall(async (req) => {
 
   return { ok: true, summary };
 });
+
+/**
+ * An approved player without a square picks one of the open squares. First
+ * pick is final: after that only the admin can move them.
+ */
+export const pickSquare = onCall(async (req) => {
+  const caller = requireUser(req);
+  const squareId = str((req.data as Record<string, unknown> | null)?.squareId, "Square", 8);
+  const playerRef = players.doc(caller.uid);
+
+  const summary = await db.runTransaction(async (tx) => {
+    const [season, player] = await Promise.all([tx.get(seasonRef), tx.get(playerRef)]);
+    if (!player.exists || player.get("status") !== "approved") {
+      throw new HttpsError("permission-denied", "Only approved players can pick a square.");
+    }
+    const name = String(player.get("displayName"));
+    const result = claimSquare(normalizeSquares(season.get("squares")), caller.uid, name, squareId);
+    if (!result.ok) throw new HttpsError("failed-precondition", result.error);
+    tx.set(
+      seasonRef,
+      {
+        year: Number(CURRENT_SEASON),
+        squares: result.squares,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(season.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      },
+      { merge: true },
+    );
+    tx.update(playerRef, { squarePickedAt: FieldValue.serverTimestamp() });
+    audit(tx, caller.uid, "squares.pick", seasonRef, { squareId, summary: result.summary });
+    return result.summary;
+  });
+
+  return { ok: true, summary };
+});
+
+/**
+ * Seats approved players who haven't picked: anyone whose 24 hours are up,
+ * or everyone unseated when a board is about to lock (so they're on it).
+ */
+async function seatOverduePlayers(now: number, beforeLock: boolean): Promise<void> {
+  await db.runTransaction(async (tx) => {
+    const [season, approvedSnap] = await Promise.all([
+      tx.get(seasonRef),
+      tx.get(players.where("status", "==", "approved")),
+    ]);
+    let squares = normalizeSquares(season.get("squares"));
+    const placed: string[] = [];
+    const waiting = approvedSnap.docs
+      .filter((d) => squareOf(squares, d.id) === null)
+      .map((d) => {
+        const from = (d.get("pickWindowFrom") ?? d.get("approvedAt")) as Timestamp | undefined;
+        return { uid: d.id, name: String(d.get("displayName")), due: from ? pickDeadline(from.toMillis()) : 0 };
+      })
+      .filter((p) => beforeLock || p.due <= now)
+      .sort((a, b) => a.due - b.due);
+    for (const p of waiting) {
+      const result = seatAtRandom(squares, p.uid, p.name, randomInt);
+      if (!result.ok) break; // board's full
+      squares = result.squares;
+      placed.push(result.summary);
+    }
+    if (placed.length === 0) return;
+    tx.set(seasonRef, { squares, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    audit(tx, "system", "squares.autoPick", seasonRef, { placed, beforeLock });
+  });
+}
 
 // ---------- admin: weekly boards ----------
 
@@ -685,6 +758,8 @@ export const manageWeek = onCall({ timeoutSeconds: 30 }, async (req) => {
   if (op !== "publish" && op !== "lock" && op !== "delete") {
     throw new HttpsError("invalid-argument", "Unknown operation.");
   }
+  // Anyone approved who hasn't picked gets a random square before the lock.
+  if (op === "lock") await seatOverduePlayers(Date.now(), true);
 
   const summary = await db.runTransaction(async (tx) => {
     const [snap, season] = await Promise.all([tx.get(ref), tx.get(seasonRef)]);
@@ -753,6 +828,15 @@ export const autoLockBoards = onSchedule(
   async () => {
     const pending = await seasonRef.collection("weeks").where("status", "in", ["draft", "open"]).get();
     const now = Date.now();
+    const lockingSoon = pending.docs.some((d) => {
+      const kickoff = d.get("kickoff") as Timestamp | undefined;
+      return !!kickoff && isLockDue(d.get("status") as WeekStatus, kickoff.toMillis(), now);
+    });
+    try {
+      await seatOverduePlayers(now, lockingSoon);
+    } catch (err) {
+      logger.error("Auto-pick failed", err);
+    }
     for (const doc of pending.docs) {
       const kickoff = doc.get("kickoff") as Timestamp | undefined;
       if (!kickoff || !isLockDue(doc.get("status") as WeekStatus, kickoff.toMillis(), now)) continue;

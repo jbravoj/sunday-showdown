@@ -1,3 +1,4 @@
+import SquarePicker from "../SquarePicker.tsx";
 import Board from "../Board.tsx";
 import { useState } from "react";
 import { WeekBoardView, WeekScoreCard, weekFigures } from "../WeekView.tsx";
@@ -24,7 +25,7 @@ const ALL_WEEKS = Array.from({ length: REGULAR_SEASON_WEEKS }, (_, i) => i + 1);
  * Approved players' home. One grid: stacked on phones; on desktop the board
  * sits on the left with the score, your square and payments on the right.
  */
-export default function Home({ uid }: { uid: string }) {
+export default function Home({ uid, pickFromMs = null }: { uid: string; pickFromMs?: number | null }) {
   const season = useSeason(true);
   const weeksState = useWeeks(false);
   const [picked, setPicked] = useState<number | null>(null);
@@ -202,11 +203,14 @@ export default function Home({ uid }: { uid: string }) {
         ) : (
           <div>
             <p className="label">Your square</p>
-            <p className="hint">
-              {fig?.locked && mine
-                ? `You didn't have a square when week ${current!.week} locked. You're in square ${squareNumber(mine)} now.`
-                : "The admin hasn't assigned your square yet. Check back soon."}
-            </p>
+            {fig?.locked && mine ? (
+              <p className="hint">
+                You didn't have a square when week {current!.week} locked. You're in square{" "}
+                {squareNumber(mine)} now.
+              </p>
+            ) : (
+              <SquarePicker squares={squares} pickFromMs={pickFromMs} />
+            )}
             <PayBox payWeek={payWeek?.week ?? null} paid={false} hasSquare={mine !== null} />
           </div>
         )}
