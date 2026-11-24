@@ -1071,7 +1071,7 @@ details.panel .rules {
 .home-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "banner" "weeks" "score" "board" "square" "paid" "sample";
+  grid-template-areas: "banner" "title" "score" "board" "square" "paid" "sample";
   gap: 12px;
 }
 .home-grid > * {
@@ -1079,7 +1079,6 @@ details.panel .rules {
 }
 .area-title {
   grid-area: title;
-  display: none;
 }
 .area-weeks {
   grid-area: weeks;
@@ -1240,23 +1239,17 @@ details.panel .rules {
     grid-template-areas:
       "banner banner"
       "title title"
-      "weeks weeks"
       "board score"
       "board square"
       "board paid"
       "board sample"
       "board .";
-    grid-template-rows: auto auto auto auto auto auto auto 1fr;
+    grid-template-rows: auto auto auto auto auto auto 1fr;
     column-gap: 24px;
     row-gap: 16px;
     align-items: start;
   }
-  .area-title {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
+
   .area-board .board-wrap {
     padding: 20px 24px 20px 14px;
   }
@@ -2095,4 +2088,67 @@ body::after {
 }
 .picker-tip {
   margin: 0;
+}
+
+/* ---- Home heading: big neon week number, matchup, ‹ › and status ---- */
+.week-kicker {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(2.6rem, 11vw, 4rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #ffd08a, #ff7a1a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 18px rgba(255, 122, 26, 0.45));
+}
+/* Phones: the score card already shows the matchup. */
+.week-matchup {
+  display: none;
+  margin: 2px 0 0;
+  font-size: 2.1rem;
+  line-height: 1;
+}
+.week-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.week-nav .status-pill {
+  margin-left: 6px;
+}
+.week-arrow {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c9d0f0;
+  font: 700 1.2rem/1 Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+.week-arrow:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: #fff;
+}
+.week-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+/* The heading shows the week now, so the score card doesn't repeat it. */
+.area-score .week-prefix {
+  display: none;
+}
+@media (min-width: 960px) {
+  .week-matchup {
+    display: block;
+  }
 }
