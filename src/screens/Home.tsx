@@ -1,3 +1,4 @@
+import EditName from "../EditName.tsx";
 import Board from "../Board.tsx";
 import { useState } from "react";
 import { WeekBoardView, WeekScoreCard, weekFigures } from "../WeekView.tsx";
@@ -176,6 +177,7 @@ export default function Home({ uid }: { uid: string }) {
                   <p className="matchup">
                     {squareNumber(shown)} · {shownSquares[shown]!.name}
                   </p>
+                  {mine && squares[mine] && <EditName name={squares[mine]!.name} />}
                 </div>
                 <span className="square-badge">{squareNumber(shown)}</span>
               </div>
