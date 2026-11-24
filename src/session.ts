@@ -7,6 +7,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut as fbSignOut,
+  updateProfile,
   type User,
 } from "firebase/auth";
 import { collection, doc, onSnapshot, query, where, type Timestamp } from "firebase/firestore";
@@ -78,19 +79,21 @@ export interface AuthState {
   loading: boolean;
   user: User | null;
   isAdmin: boolean;
+  /** Copied out of the user so a refresh after verifying re-renders the app. */
+  emailVerified: boolean;
 }
 
 export function useAuth(): AuthState {
-  const [state, setState] = useState<AuthState>({ loading: true, user: null, isAdmin: false });
+  const [state, setState] = useState<AuthState>({ loading: true, user: null, isAdmin: false, emailVerified: false });
   useEffect(
     () =>
       onIdTokenChanged(auth, async (user) => {
         if (!user) {
-          setState({ loading: false, user: null, isAdmin: false });
+          setState({ loading: false, user: null, isAdmin: false, emailVerified: false });
           return;
         }
         const token = await user.getIdTokenResult();
-        setState({ loading: false, user, isAdmin: token.claims.admin === true });
+        setState({ loading: false, user, isAdmin: token.claims.admin === true, emailVerified: user.emailVerified });
       }),
     [],
   );
@@ -101,14 +104,39 @@ export async function signIn(email: string, password: string): Promise<void> {
   await signInWithEmailAndPassword(auth, email, password);
 }
 
-/** Creates the account and emails a verification link (needed only for email-locked invites). */
-export async function createAccount(email: string, password: string): Promise<void> {
+/**
+ * Creates the account, saves the name they want on their square, and emails
+ * a verification link. They can't request or use an invite until they verify.
+ */
+export async function createAccount(email: string, password: string, name: string): Promise<void> {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   try {
-    await sendEmailVerification(cred.user);
+    await updateProfile(cred.user, { displayName: name });
   } catch {
-    /* not fatal: they can still join with an unlocked invite */
+    /* not fatal: they can type it again on the join screen */
   }
+  try {
+    await sendVerification();
+  } catch {
+    /* the verify screen has a Resend button */
+  }
+}
+
+/** Emails the signed-in user a verification link that brings them back to the site. */
+export async function sendVerification(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) return;
+  await sendEmailVerification(user, { url: `${window.location.origin}${window.location.pathname}` });
+}
+
+/** Re-reads the account; if the email is now verified, refreshes the sign-in so the app moves on. */
+export async function checkVerified(): Promise<boolean> {
+  const user = auth.currentUser;
+  if (!user) return false;
+  await user.reload();
+  if (!user.emailVerified) return false;
+  await user.getIdToken(true);
+  return true;
 }
 
 export async function resetPassword(email: string): Promise<void> {
@@ -306,9 +334,9 @@ export interface InviteRequest {
   invitedAt: Timestamp | null;
 }
 
-/** The signed-in person's own invite request, if they made one. */
-export function useMyInviteRequest(uid: string | null): InviteRequest | null {
-  const [state, setState] = useState<InviteRequest | null>(null);
+/** The signed-in person's own invite request: undefined while loading, null if none. */
+export function useMyInviteRequest(uid: string | null): InviteRequest | null | undefined {
+  const [state, setState] = useState<InviteRequest | null | undefined>(undefined);
   useEffect(() => {
     if (!uid) return;
     return onSnapshot(

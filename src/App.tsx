@@ -8,6 +8,7 @@ import AdminInvites from "./screens/AdminInvites.tsx";
 import AdminPlayers from "./screens/AdminPlayers.tsx";
 import Home from "./screens/Home.tsx";
 import Join from "./screens/Join.tsx";
+import Verify from "./screens/Verify.tsx";
 import Pending from "./screens/Pending.tsx";
 import Rules, { RulesList } from "./screens/Rules.tsx";
 import SignIn from "./screens/SignIn.tsx";
@@ -59,6 +60,8 @@ export default function App() {
     );
   } else if (!playerState.loading && playerState.error) {
     screen = <p className="error">{playerState.error}</p>;
+  } else if (!player && !auth.emailVerified) {
+    screen = <Verify email={auth.user.email ?? "your email"} />;
   } else if (!player) {
     screen = <Join suggestedName={auth.user.displayName ?? ""} uid={auth.user.uid} />;
   } else if (player.status === "removed") {

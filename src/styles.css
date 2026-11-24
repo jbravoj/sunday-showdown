@@ -1994,3 +1994,28 @@ body::after {
 .join-request p {
   margin: 0 0 10px;
 }
+
+/* ---- Verify your email ---- */
+.verify-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 12px;
+  border-radius: 16px;
+  background: var(--hot);
+  color: var(--accent-ink);
+}
+.verify .stack {
+  margin-top: 16px;
+}
+.request-status {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 178, 26, 0.45);
+  background: rgba(255, 122, 26, 0.1);
+}
+.request-status p {
+  margin: 0;
+}
