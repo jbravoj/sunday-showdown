@@ -5,6 +5,7 @@ import {
   getSavedInviteCode,
   resetPassword,
   signIn,
+  useSiteStatus,
 } from "../session.ts";
 import { DISPLAY_NAME_MAX, validateDisplayName } from "../../shared/invite.ts";
 
@@ -24,6 +25,9 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const site = useSiteStatus();
+  const closed = site?.signupsOpen === false;
+  if (closed && mode === "signup") setMode("signin");
 
   function switchTo(next: Mode) {
     setMode(next);
@@ -79,7 +83,9 @@ export default function SignIn() {
         ? "You're invited. Sign in to claim your seat; your code fills in for you."
         : mode === "signup"
           ? "After this you'll verify your email, then the admin sends your invite code."
-          : "Sunday Showdown is invite-only. Sign in, or open the invite link the admin sent you.";
+          : closed
+            ? `All ${site?.maxPlayers ?? 12} seats are filled, so sign-ups are closed. Players, sign in below.`
+            : "Sunday Showdown is invite-only. Sign in, or open the invite link the admin sent you.";
 
   return (
     <section className="card panel">
@@ -163,9 +169,13 @@ export default function SignIn() {
       <div className="auth-links">
         {mode === "signin" && (
           <>
-            <button className="link" onClick={() => switchTo("signup")}>
-              New here? Create an account
-            </button>
+            {closed ? (
+              <span className="hint">Sign-ups closed · all seats filled</span>
+            ) : (
+              <button className="link" onClick={() => switchTo("signup")}>
+                New here? Create an account
+              </button>
+            )}
             <button className="link" onClick={() => switchTo("reset")}>
               Forgot password?
             </button>

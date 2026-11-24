@@ -29,6 +29,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Seats filled and whether sign-up is open: shown on the sign-in page,
+    // so anyone can read it. Only Cloud Functions write it.
+    match /site/status {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Someone signed up without a code and asked for one. They can see their
     // own request; the admin sees all of them.
     match /inviteRequests/{uid} {

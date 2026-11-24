@@ -1,6 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, errorMessage } from "../firebase.ts";
-import { clearSavedInviteCode, getSavedInviteCode, refreshUser, useMyInviteRequest } from "../session.ts";
+import {
+  clearSavedInviteCode,
+  getSavedInviteCode,
+  refreshUser,
+  useMyInviteRequest,
+  useSiteStatus,
+} from "../session.ts";
 import {
   DISPLAY_NAME_MAX,
   normalizeInviteCode,
@@ -16,6 +22,8 @@ export default function Join({ suggestedName, uid }: { suggestedName: string; ui
   const myRequest = useMyInviteRequest(uid);
   const [asking, setAsking] = useState(false);
   const [autoAsked, setAutoAsked] = useState(false);
+  const site = useSiteStatus();
+  const full = site?.signupsOpen === false;
 
   async function ask(displayName: string) {
     setAsking(true);
@@ -32,12 +40,12 @@ export default function Join({ suggestedName, uid }: { suggestedName: string; ui
   // Verified and no code in hand: let the admin know right away, using the
   // name they gave at sign-up.
   useEffect(() => {
-    if (autoAsked || myRequest !== null || getSavedInviteCode()) return;
+    if (full || autoAsked || myRequest !== null || getSavedInviteCode()) return;
     const check = validateDisplayName(suggestedName);
     if (!check.ok) return;
     setAutoAsked(true);
     void ask(check.name);
-  }, [myRequest, autoAsked, suggestedName]);
+  }, [myRequest, autoAsked, suggestedName, full]);
 
   async function onRequest() {
     setError(null);
@@ -127,7 +135,15 @@ export default function Join({ suggestedName, uid }: { suggestedName: string; ui
       </form>
       {error && <p className="error">{error}</p>}
 
-      {myRequest === null && !asking && (
+      {full && myRequest?.status !== "invited" && (
+        <div className="request-status">
+          <p>
+            <b>All {site?.maxPlayers ?? 12} seats are filled.</b> Sign-ups are closed for now. If a seat
+            opens up, the admin can send you an invite.
+          </p>
+        </div>
+      )}
+      {!full && myRequest === null && !asking && (
         <div className="join-request">
           <p className="hint">No invite code? Ask the admin for one. They'll get a notice right away.</p>
           <button className="btn" type="button" disabled={asking} onClick={onRequest}>

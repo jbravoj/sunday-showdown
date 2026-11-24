@@ -52,6 +52,7 @@ import {
   type WeekStatus,
 } from "../../shared/week.ts";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { inviteMail, inviteRequestMail, playerJoinedMail } from "../../shared/notify.ts";
 import { MAIL_SECRETS, sendMail } from "./mail.ts";
 import { logger } from "firebase-functions/v2";
@@ -66,6 +67,8 @@ const invitations = db.collection("invitations");
 const players = db.collection("players");
 const auditLog = db.collection("auditLog");
 const inviteRequests = db.collection("inviteRequests");
+/** Public (signed-out visitors can read it): seats filled and whether sign-up is open. */
+const siteStatusRef = db.collection("site").doc("status");
 const seasonRef = db.collection("seasons").doc(CURRENT_SEASON);
 
 // ---------- helpers ----------
@@ -263,8 +266,15 @@ export const requestInvite = onCall({ secrets: MAIL_SECRETS }, async (req) => {
   const ref = inviteRequests.doc(caller.uid);
 
   const isNew = await db.runTransaction(async (tx) => {
-    const [playerSnap, reqSnap] = await Promise.all([tx.get(players.doc(caller.uid)), tx.get(ref)]);
+    const [playerSnap, reqSnap, allPlayers] = await Promise.all([
+      tx.get(players.doc(caller.uid)),
+      tx.get(ref),
+      tx.get(players),
+    ]);
     if (playerSnap.exists) throw new HttpsError("already-exists", "You're already registered.");
+    if (seatsTaken(allPlayers.docs.map((d) => d.get("status") as PlayerStatus)) >= MAX_PLAYERS) {
+      throw new HttpsError("resource-exhausted", `All ${MAX_PLAYERS} seats are taken. Sign-ups are closed.`);
+    }
     if (reqSnap.exists && reqSnap.get("status") === "waiting") {
       tx.update(ref, { displayName });
       return false;
@@ -813,4 +823,20 @@ export const markFullyPaid = onCall(async (req) => {
   });
 
   return { ok: true, summary };
+});
+
+// ---------- public site status ----------
+
+/**
+ * Whenever a player record changes, recount the seats and publish whether
+ * sign-up is open. All 12 taken → the sign-up option disappears; a removal
+ * opens it again.
+ */
+export const updateSiteStatus = onDocumentWritten("players/{uid}", async () => {
+  const all = await players.get();
+  const taken = seatsTaken(all.docs.map((d) => d.get("status") as PlayerStatus));
+  await siteStatusRef.set(
+    { seatsTaken: taken, maxPlayers: MAX_PLAYERS, signupsOpen: taken < MAX_PLAYERS, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
 });
