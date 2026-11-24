@@ -393,3 +393,26 @@ export function usePendingPlayers(enabled: boolean): PendingPlayer[] {
   }, [enabled]);
   return rows;
 }
+
+// ---------- public site status ----------
+
+export interface SiteStatus {
+  seatsTaken: number;
+  maxPlayers: number;
+  signupsOpen: boolean;
+}
+
+/** Seats filled and whether sign-up is open. Readable signed out; open until it loads. */
+export function useSiteStatus(): SiteStatus | null {
+  const [state, setState] = useState<SiteStatus | null>(null);
+  useEffect(
+    () =>
+      onSnapshot(
+        doc(db, "site", "status"),
+        (snap) => setState(snap.exists() ? (snap.data() as SiteStatus) : null),
+        () => setState(null),
+      ),
+    [],
+  );
+  return state;
+}
