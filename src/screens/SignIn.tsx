@@ -6,6 +6,7 @@ import {
   resetPassword,
   signIn,
 } from "../session.ts";
+import { DISPLAY_NAME_MAX, validateDisplayName } from "../../shared/invite.ts";
 
 type Mode = "signin" | "signup" | "reset";
 
@@ -16,6 +17,7 @@ export default function SignIn() {
   // Someone arriving from an invite link most likely needs a new account.
   const [mode, setMode] = useState<Mode>(invited ? "signup" : "signin");
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,7 +37,14 @@ export default function SignIn() {
     setError(null);
     setNotice(null);
     const addr = email.trim();
+    let squareName = "";
     if (mode === "signup") {
+      const nameCheck = validateDisplayName(name);
+      if (!nameCheck.ok) {
+        setError(nameCheck.error);
+        return;
+      }
+      squareName = nameCheck.name;
       if (password.length < MIN_PASSWORD) {
         setError(`Use a password of at least ${MIN_PASSWORD} characters.`);
         return;
@@ -48,7 +57,7 @@ export default function SignIn() {
     setBusy(true);
     try {
       if (mode === "signin") await signIn(addr, password);
-      else if (mode === "signup") await createAccount(addr, password);
+      else if (mode === "signup") await createAccount(addr, password, squareName);
       else {
         await resetPassword(addr);
         setNotice(`If there's an account for ${addr}, a reset link is on its way.`);
@@ -68,7 +77,7 @@ export default function SignIn() {
       : invited
         ? "You're invited. Create an account (or sign in) to claim your seat."
         : mode === "signup"
-          ? "You'll need an invite code from the admin after this."
+          ? "After this you'll verify your email, then the admin sends your invite code."
           : "Sunday Showdown is invite-only. Sign in, or open the invite link the admin sent you.";
 
   return (
@@ -77,6 +86,21 @@ export default function SignIn() {
       <p>{blurb}</p>
 
       <form onSubmit={onSubmit} className="stack">
+        {mode === "signup" && (
+          <label className="field">
+            <span className="label">Name on your square</span>
+            <input
+              className="input"
+              autoComplete="nickname"
+              maxLength={DISPLAY_NAME_MAX * 2}
+              placeholder="Too Tall"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <span className="hint">Up to {DISPLAY_NAME_MAX} characters. Emoji welcome.</span>
+          </label>
+        )}
         <label className="field">
           <span className="label">Email</span>
           <input

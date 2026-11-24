@@ -98,6 +98,16 @@ function requireUser(req: CallableRequest): Caller {
   };
 }
 
+/** New players must prove they own their email before asking for or using an invite. */
+function requireVerified(caller: Caller): void {
+  if (!caller.emailVerified && !caller.isAdmin) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Verify your email first: tap the link we sent you, then try again.",
+    );
+  }
+}
+
 function requireAdmin(req: CallableRequest): Caller {
   const caller = requireUser(req);
   if (!caller.isAdmin) throw new HttpsError("permission-denied", "Admins only.");
@@ -146,8 +156,8 @@ const INVITE_ERRORS = {
  * - email + send: emails the code and link to that address.
  * - email + lock (the default when an email is given, for older clients):
  *   only that address can use it.
- * - requestUid: answers someone's invite request: uses their name and email,
- *   emails them, and never locks (they may not have verified their email).
+ * - requestUid: answers someone's invite request: uses their name and their
+ *   verified email, emails them, and locks the code to that email.
  */
 export const createInvitation = onCall({ secrets: MAIL_SECRETS }, async (req) => {
   const admin = requireAdmin(req);
@@ -167,7 +177,7 @@ export const createInvitation = onCall({ secrets: MAIL_SECRETS }, async (req) =>
     email = String(reqSnap.get("email"));
     note = note ?? (String(reqSnap.get("displayName") ?? "") || null);
     send = true;
-    lock = false;
+    lock = true;
   }
   if (email !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new HttpsError("invalid-argument", "That email address doesn't look right.");
@@ -246,6 +256,7 @@ export const revokeInvitation = onCall(async (req) => {
  */
 export const requestInvite = onCall({ secrets: MAIL_SECRETS }, async (req) => {
   const caller = requireUser(req);
+  requireVerified(caller);
   const nameCheck = validateDisplayName(str((req.data as Record<string, unknown> | null)?.displayName, "Name", 100));
   if (!nameCheck.ok) throw new HttpsError("invalid-argument", nameCheck.error);
   const displayName = nameCheck.name;
@@ -280,6 +291,7 @@ export const requestInvite = onCall({ secrets: MAIL_SECRETS }, async (req) => {
  */
 export const redeemInvitation = onCall({ secrets: MAIL_SECRETS }, async (req) => {
   const caller = requireUser(req);
+  requireVerified(caller);
   const data = (req.data ?? {}) as Record<string, unknown>;
   const code = normalizeInviteCode(str(data.code, "Invite code", 40));
   if (code === null) throw new HttpsError("invalid-argument", "That invite code isn't valid.");
@@ -312,13 +324,6 @@ export const redeemInvitation = onCall({ secrets: MAIL_SECRETS }, async (req) =>
     }
 
     const lockedEmail = (inviteSnap.get("email") as string | null) ?? null;
-    // An email-locked invite only counts an address the player has proven they own.
-    if (lockedEmail !== null && !caller.emailVerified) {
-      throw new HttpsError(
-        "failed-precondition",
-        "This invite is locked to an email address. Verify your email first: use the link we sent you, then try again.",
-      );
-    }
     const check = checkInvitation(
       {
         expiresAtMs: (inviteSnap.get("expiresAt") as Timestamp).toMillis(),

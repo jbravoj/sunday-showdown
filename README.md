@@ -85,13 +85,20 @@ earlier weeks. Drafts are hidden from players by the Firestore rules.
 
 ## Invite requests, join alerts and emailed invites
 
-- Someone who signs up without a code can tap **Request an invite** on the
-  join screen. That creates `inviteRequests/{uid}` and emails the admin.
+- Sign-up asks for the name on their square, email and password, then shows
+  **Verify your email** until they tap the link Firebase emails them (it
+  checks on its own every few seconds; Resend is there too). Nothing else
+  opens until they're verified, and the server refuses invite requests and
+  invite codes from unverified accounts.
+- Once verified, the join screen asks the admin for an invite automatically
+  (unless they arrived with a code). That creates `inviteRequests/{uid}` and
+  emails the admin.
 - Every admin page shows a banner while someone is waiting: an invite request
   (→ Invites) or a player who joined and needs approval (→ Players). Joining
   also emails the admin.
 - Admin → Invites lists requests with **Send invite**, which creates a
-  one-time code and emails it with the join link. The create form can email
+  one-time code locked to their verified email and emails it with the join
+  link. The create form can email
   an invite too, and optionally lock it to that address.
 
 Email goes out through a Gmail account with an app password. Set it up once:

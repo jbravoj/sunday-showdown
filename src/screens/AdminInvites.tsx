@@ -144,8 +144,8 @@ export default function AdminInvites() {
         <section className="card panel">
           <h2>Asking for an invite</h2>
           <p className="hint">
-            They signed up without a code. Send invite emails them a code and link; it isn't locked
-            to their email, so they don't need to verify it first.
+            They signed up and verified their email. Send invite emails them a code and link that
+            only their email can use.
           </p>
           <ul className="request-list">
             {[...waiting, ...answered].map((r) => (
@@ -206,7 +206,7 @@ export default function AdminInvites() {
               </label>
               <label className="check">
                 <input type="checkbox" checked={lock} onChange={(e) => setLock(e.target.checked)} />
-                Only this email can use it (they'll have to verify their email first)
+                Only this email can use it
               </label>
             </>
           )}

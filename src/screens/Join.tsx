@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { api, errorMessage } from "../firebase.ts";
 import { clearSavedInviteCode, getSavedInviteCode, refreshUser, useMyInviteRequest } from "../session.ts";
 import {
@@ -10,11 +10,34 @@ import {
 /** Signed in, no player record yet: redeem an invite and pick a name. */
 export default function Join({ suggestedName, uid }: { suggestedName: string; uid: string }) {
   const [code, setCode] = useState(getSavedInviteCode() ?? "");
-  const [name, setName] = useState(suggestedName.split(" ")[0] ?? "");
+  const [name, setName] = useState(suggestedName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const myRequest = useMyInviteRequest(uid);
   const [asking, setAsking] = useState(false);
+  const [autoAsked, setAutoAsked] = useState(false);
+
+  async function ask(displayName: string) {
+    setAsking(true);
+    try {
+      await refreshUser();
+      await api.requestInvite({ displayName });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setAsking(false);
+    }
+  }
+
+  // Verified and no code in hand: let the admin know right away, using the
+  // name they gave at sign-up.
+  useEffect(() => {
+    if (autoAsked || myRequest !== null || getSavedInviteCode()) return;
+    const check = validateDisplayName(suggestedName);
+    if (!check.ok) return;
+    setAutoAsked(true);
+    void ask(check.name);
+  }, [myRequest, autoAsked, suggestedName]);
 
   async function onRequest() {
     setError(null);
@@ -23,14 +46,7 @@ export default function Join({ suggestedName, uid }: { suggestedName: string; ui
       setError(`${nameCheck.error} (Fill in the name you want on your square first.)`);
       return;
     }
-    setAsking(true);
-    try {
-      await api.requestInvite({ displayName: nameCheck.name });
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setAsking(false);
-    }
+    await ask(nameCheck.name);
   }
 
   async function onSubmit(e: FormEvent) {
@@ -62,6 +78,22 @@ export default function Join({ suggestedName, uid }: { suggestedName: string; ui
   return (
     <section className="card panel">
       <h2>Claim your seat</h2>
+      {myRequest?.status === "waiting" && (
+        <div className="request-status">
+          <p>
+            <b>Email verified ✓</b> The admin's been notified. Your invite code will come to{" "}
+            {myRequest.email} (check Spam if you don't see it).
+          </p>
+        </div>
+      )}
+      {myRequest?.status === "invited" && (
+        <div className="request-status">
+          <p>
+            <b>Your invite is in your email.</b> Open it and tap Claim your seat, or type the code
+            below.
+          </p>
+        </div>
+      )}
       <p>Enter your invite code and the name you want on your square.</p>
       <form onSubmit={onSubmit} className="stack">
         <label className="field">
@@ -95,25 +127,14 @@ export default function Join({ suggestedName, uid }: { suggestedName: string; ui
       </form>
       {error && <p className="error">{error}</p>}
 
-      <div className="join-request">
-        {myRequest?.status === "waiting" ? (
-          <p className="notice">
-            Request sent ✓ The admin's been notified. Your code will come to your email; check spam
-            if you don't see it.
-          </p>
-        ) : myRequest?.status === "invited" ? (
-          <p className="notice">
-            Your invite was emailed to {myRequest.email}. Check spam if you don't see it.
-          </p>
-        ) : (
-          <>
-            <p className="hint">No invite code? Ask the admin for one. They'll get a notice right away.</p>
-            <button className="btn" type="button" disabled={asking} onClick={onRequest}>
-              {asking ? "Asking…" : "Request an invite"}
-            </button>
-          </>
-        )}
-      </div>
+      {myRequest === null && !asking && (
+        <div className="join-request">
+          <p className="hint">No invite code? Ask the admin for one. They'll get a notice right away.</p>
+          <button className="btn" type="button" disabled={asking} onClick={onRequest}>
+            Request an invite
+          </button>
+        </div>
+      )}
     </section>
   );
 }
