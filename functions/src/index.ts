@@ -837,6 +837,12 @@ export const autoLockBoards = onSchedule(
     } catch (err) {
       logger.error("Auto-pick failed", err);
     }
+    // Keeps the public seat count right even if a player change was missed.
+    try {
+      await refreshSiteStatus();
+    } catch (err) {
+      logger.error("Site status refresh failed", err);
+    }
     for (const doc of pending.docs) {
       const kickoff = doc.get("kickoff") as Timestamp | undefined;
       if (!kickoff || !isLockDue(doc.get("status") as WeekStatus, kickoff.toMillis(), now)) continue;
@@ -917,10 +923,15 @@ export const markFullyPaid = onCall(async (req) => {
  * opens it again.
  */
 export const updateSiteStatus = onDocumentWritten("players/{uid}", async () => {
+  await refreshSiteStatus();
+});
+
+/** Recounts seats taken and publishes whether sign-up is open. */
+async function refreshSiteStatus(): Promise<void> {
   const all = await players.get();
   const taken = seatsTaken(all.docs.map((d) => d.get("status") as PlayerStatus));
   await siteStatusRef.set(
     { seatsTaken: taken, maxPlayers: MAX_PLAYERS, signupsOpen: taken < MAX_PLAYERS, updatedAt: FieldValue.serverTimestamp() },
     { merge: true },
   );
-});
+}
