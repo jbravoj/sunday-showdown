@@ -2019,3 +2019,27 @@ body::after {
 .request-status p {
   margin: 0;
 }
+
+/* ---- Edit your own name ---- */
+.edit-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 0 !important;
+  font-size: 0.85rem;
+}
+.edit-name-saved {
+  color: var(--accent);
+  font-weight: 700;
+}
+.edit-name-form {
+  margin: 10px 0 4px;
+}
+.edit-name-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.edit-name-actions .btn {
+  width: auto;
+}
