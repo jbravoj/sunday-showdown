@@ -1,5 +1,4 @@
 import { RulesList } from "./Rules.tsx";
-import EditName from "../EditName.tsx";
 
 /** Registered and agreed to the rules; waiting on the admin (Phase 3). */
 export default function Pending({ name }: { name: string }) {
@@ -7,7 +6,6 @@ export default function Pending({ name }: { name: string }) {
     <>
       <section className="card panel">
         <h2>You're on the list, {name}</h2>
-        <EditName name={name} />
         <p>
           The admin will approve your seat and assign your square. This page updates on its own
           when that happens.
