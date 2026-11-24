@@ -138,7 +138,11 @@ export default function AdminSquares({ approved }: { approved: readonly Approved
       </ul>
 
       {unseated.length > 0 && (
-        <p className="hint">Without a square: {unseated.map((p) => p.displayName).join(", ")}</p>
+        <p className="hint">
+          Without a square: {unseated.map((p) => p.displayName).join(", ")}. Approved players can
+          pick their own; if they haven't within 24 hours (or when a board locks), the site picks a
+          random open square for them.
+        </p>
       )}
     </section>
   );

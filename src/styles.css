@@ -2019,3 +2019,80 @@ body::after {
 .request-status p {
   margin: 0;
 }
+
+/* ---- Pick your own square ---- */
+.picker-title {
+  margin: 4px 0 6px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+}
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 14px 0 12px;
+}
+.picker-square {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 6px 4px;
+  border: 1px solid rgba(255, 178, 26, 0.5);
+  border-radius: 12px;
+  background: rgba(255, 122, 26, 0.1);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.picker-square:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 16px rgba(255, 122, 26, 0.35);
+}
+.picker-num {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.picker-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker-taken {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  cursor: default;
+}
+.picker-picked {
+  border-color: transparent;
+  background: var(--hot);
+  color: var(--accent-ink);
+  box-shadow: 0 0 22px rgba(255, 122, 26, 0.5);
+}
+.picker-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.picker-confirm .btn {
+  width: auto;
+  flex: 1 1 auto;
+}
+.picker-confirm .hint {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+}
+.picker-tip {
+  margin: 0;
+}

@@ -187,6 +187,9 @@ export interface Player {
   status: PlayerStatus;
   rulesVersion: string | null;
   joinedAt: Timestamp | null;
+  approvedAt?: Timestamp | null;
+  /** Start of the 24 hours they have to pick a square (set on approval). */
+  pickWindowFrom?: Timestamp | null;
 }
 
 export type PlayerState =

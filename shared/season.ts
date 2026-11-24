@@ -180,3 +180,45 @@ export function renameSeat(current: Squares, uid: string, name: string): Record<
   for (const id of SQUARE_IDS) if (squares[id]?.uid === uid) squares[id] = { uid, name };
   return squares;
 }
+
+// ---------- players picking their own square ----------
+
+/** How long a newly approved player has to pick before the site picks for them. */
+export const PICK_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** When the site picks for them, given when they were approved (ms). */
+export function pickDeadline(approvedAtMs: number): number {
+  return approvedAtMs + PICK_WINDOW_MS;
+}
+
+/** An approved player picks their own square. First pick is final. */
+export function claimSquare(current: Squares, uid: string, name: string, squareId: string): OpResult {
+  const squares = { ...normalizeSquares(current) };
+  if (!SQUARE_IDS.includes(squareId)) return { ok: false, error: "Unknown square." };
+  const mine = squareOf(squares, uid);
+  if (mine !== null) {
+    return { ok: false, error: `You're already in square ${squareNumber(mine)}. Ask the admin if you need to move.` };
+  }
+  if (squares[squareId] !== null) {
+    return { ok: false, error: `Square ${squareNumber(squareId)} was just taken. Pick another.` };
+  }
+  squares[squareId] = { uid, name };
+  return { ok: true, squares, summary: `${name} picked square ${squareNumber(squareId)}.` };
+}
+
+/** Seats a player in a random open square (they didn't pick in time). */
+export function seatAtRandom(
+  current: Squares,
+  uid: string,
+  name: string,
+  randomInt: (maxExclusive: number) => number,
+): OpResult {
+  const squares = { ...normalizeSquares(current) };
+  if (squareOf(squares, uid) !== null) return { ok: false, error: `${name} already has a square.` };
+  const open = SQUARE_IDS.filter((id) => squares[id] === null);
+  if (open.length === 0) return { ok: false, error: "Every square is already filled." };
+  const j = randomInt(open.length);
+  if (!Number.isInteger(j) || j < 0 || j >= open.length) throw new Error(`randomInt(${open.length}) returned ${j}`);
+  squares[open[j]] = { uid, name };
+  return { ok: true, squares, summary: `Picked square ${squareNumber(open[j])} for ${name} at random.` };
+}
