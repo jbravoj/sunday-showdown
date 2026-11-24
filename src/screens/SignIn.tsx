@@ -14,8 +14,9 @@ const MIN_PASSWORD = 8;
 
 export default function SignIn() {
   const invited = getSavedInviteCode() !== null;
-  // Someone arriving from an invite link most likely needs a new account.
-  const [mode, setMode] = useState<Mode>(invited ? "signup" : "signin");
+  // Invites go to people who already signed up and verified, so an invite
+  // link opens on Sign in.
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -75,7 +76,7 @@ export default function SignIn() {
     mode === "reset"
       ? "Enter your email and we'll send you a link to set a new password."
       : invited
-        ? "You're invited. Create an account (or sign in) to claim your seat."
+        ? "You're invited. Sign in to claim your seat; your code fills in for you."
         : mode === "signup"
           ? "After this you'll verify your email, then the admin sends your invite code."
           : "Sunday Showdown is invite-only. Sign in, or open the invite link the admin sent you.";

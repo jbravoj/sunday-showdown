@@ -84,7 +84,7 @@ export function inviteMail(code: string, name: string | null, expiresAt: Date, b
       [
         "Your invite code:",
         `<span style="display:inline-block;padding:10px 16px;border-radius:10px;background:#0B0B2B;color:#FFFFFF;font-size:24px;font-weight:800;letter-spacing:3px;font-family:Menlo,Consolas,monospace">${escapeHtml(code)}</span>`,
-        `Tap the button, sign in (or create your account), and the code fills in for you. It works once and expires ${escapeHtml(until)}.`,
+        `Tap the button and sign in. The code fills in for you. It works once and expires ${escapeHtml(until)}.`,
       ],
       { label: "Claim your seat", href: link },
       "NO PAY • NO PLAY • NO OT",
