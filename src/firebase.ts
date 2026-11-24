@@ -50,7 +50,7 @@ export const api = {
     { uid: string; action: "approve" | "remove" | "reinstate" },
     { ok: true }
   >("setPlayerStatus"),
-  renamePlayer: callable<{ uid?: string; displayName: string }, { ok: true }>("renamePlayer"),
+  renamePlayer: callable<{ uid: string; displayName: string }, { ok: true }>("renamePlayer"),
   manageSquares: callable<
     { op: "draw" } | { op: "clear"; squareId: string } | { op: "place"; squareId: string; uid: string },
     { ok: true; summary: string }

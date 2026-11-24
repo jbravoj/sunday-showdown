@@ -453,16 +453,10 @@ export const setPlayerStatus = onCall(async (req) => {
 });
 
 /** Admin changes the name shown on a player's square. */
-/**
- * Changes a player's name everywhere it shows: their record and their seat on
- * the season board (same square). The admin can rename anyone; a player can
- * rename only themselves. Locked weeks keep the name they locked with.
- */
 export const renamePlayer = onCall(async (req) => {
-  const caller = requireUser(req);
+  const admin = requireAdmin(req);
   const data = (req.data ?? {}) as Record<string, unknown>;
-  const uid = data.uid === undefined || data.uid === null ? caller.uid : playerId(data.uid);
-  if (uid !== caller.uid && !caller.isAdmin) throw new HttpsError("permission-denied", "You can only change your own name.");
+  const uid = playerId(data.uid);
   const nameCheck = validateDisplayName(str(data.displayName, "Name", 100));
   if (!nameCheck.ok) throw new HttpsError("invalid-argument", nameCheck.error);
   const displayName = nameCheck.name;
@@ -475,9 +469,6 @@ export const renamePlayer = onCall(async (req) => {
       tx.get(seasonRef),
     ]);
     if (!snap.exists) throw new HttpsError("not-found", "Player not found.");
-    if (!caller.isAdmin && snap.get("status") === "removed") {
-      throw new HttpsError("permission-denied", "This account was removed from the board.");
-    }
     const before = String(snap.get("displayName"));
     if (before === displayName) return;
     const taken = allPlayers.docs.some(
@@ -494,7 +485,7 @@ export const renamePlayer = onCall(async (req) => {
         updatedAt: FieldValue.serverTimestamp(),
       });
     }
-    audit(tx, caller.uid, "player.rename", playerRef, { from: before, to: displayName });
+    audit(tx, admin.uid, "player.rename", playerRef, { from: before, to: displayName });
   });
 
   return { ok: true };
