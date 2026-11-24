@@ -5,7 +5,6 @@ import { WeekBoardView, WeekScoreCard, weekFigures } from "../WeekView.tsx";
 import { PAYMENT_LINKS } from "../paymentLinks.ts";
 import WinnerBanner from "../WinnerBanner.tsx";
 import { SEASON_TOTAL_CENTS, isPaidFor, seasonTally } from "../../shared/week.ts";
-import { REGULAR_SEASON_WEEKS } from "../../shared/schedule.ts";
 import { useSeason, useWeeks } from "../session.ts";
 import { DEFAULT_LAYOUT } from "../../shared/layout.ts";
 import { computePrize, formatCents, resolveWeek } from "../../shared/game.ts";
@@ -19,7 +18,6 @@ import {
 } from "../../shared/season.ts";
 
 const NO_DIGITS = Array.from({ length: 10 }, () => null);
-const ALL_WEEKS = Array.from({ length: REGULAR_SEASON_WEEKS }, (_, i) => i + 1);
 
 /**
  * Approved players' home. One grid: stacked on phones; on desktop the board
@@ -37,6 +35,10 @@ export default function Home({ uid, pickFromMs = null }: { uid: string; pickFrom
   const weeks = weeksState.weeks;
   // Latest published week by default; players can flip back to earlier ones.
   const current = weeks.find((w) => w.week === picked) ?? weeks[weeks.length - 1] ?? null;
+  // ‹ › step through the weeks that have been posted.
+  const at = current ? weeks.indexOf(current) : -1;
+  const prevWeek = at > 0 ? weeks[at - 1] : null;
+  const nextWeek = at >= 0 && at < weeks.length - 1 ? weeks[at + 1] : null;
   const filled = SQUARE_IDS.filter((id) => squares[id] !== null).length;
   const open = SQUARE_IDS.filter((id) => squares[id] === null);
   const mine = squareOf(squares, uid);
@@ -74,56 +76,45 @@ export default function Home({ uid, pickFromMs = null }: { uid: string; pickFrom
           />
         </div>
       )}
-      <div className="area-title">
-        <h1 className="page-title">
-          {current
-            ? `Week ${current.week} · ${current.away.short} @ ${current.home.short}`
-            : `${CURRENT_SEASON} season board`}
-        </h1>
-        {current && (
-          <span className={`status-pill status-${current.status}`}>
-            {current.status === "locked"
-              ? "Locked · numbers drawn"
-              : current.status === "open"
-                ? "Open · numbers drawn at lock"
-                : "Draft"}
-          </span>
+      <div className="area-title week-heading">
+        {current ? (
+          <>
+            <h1 className="week-kicker">Week {current.week}</h1>
+            <p className="page-title week-matchup">
+              {current.away.short} @ {current.home.short}
+            </p>
+            <div className="week-nav">
+              <button
+                type="button"
+                className="week-arrow"
+                disabled={!prevWeek}
+                aria-label={prevWeek ? `Week ${prevWeek.week}` : "No earlier week"}
+                onClick={() => prevWeek && setPicked(prevWeek.week)}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="week-arrow"
+                disabled={!nextWeek}
+                aria-label={nextWeek ? `Week ${nextWeek.week}` : "No later week"}
+                onClick={() => nextWeek && setPicked(nextWeek.week)}
+              >
+                ›
+              </button>
+              <span className={`status-pill status-${current.status}`}>
+                {current.status === "locked"
+                  ? "Locked · numbers drawn"
+                  : current.status === "open"
+                    ? "Open · numbers drawn at lock"
+                    : "Draft"}
+              </span>
+            </div>
+          </>
+        ) : (
+          <h1 className="page-title">{CURRENT_SEASON} season board</h1>
         )}
       </div>
-
-      {current && (
-        <div className="area-weeks week-chips week-chips-player" role="list">
-          {ALL_WEEKS.map((n) => {
-            const w = weeks.find((x) => x.week === n);
-            if (!w) {
-              return (
-                <button
-                  key={n}
-                  role="listitem"
-                  className="week-chip week-chip-later"
-                  disabled
-                  aria-label={`Week ${n}, not posted yet`}
-                >
-                  {n}
-                </button>
-              );
-            }
-            const on = w.week === current.week;
-            return (
-              <button
-                key={n}
-                role="listitem"
-                className={`week-chip${on ? " week-chip-on" : ""}`}
-                aria-pressed={on}
-                aria-label={`Week ${n}`}
-                onClick={() => setPicked(n)}
-              >
-                {n}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       <div className="area-score">
         {current ? (
