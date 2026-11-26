@@ -1,3 +1,4 @@
+import WeekResultPanel from "../WeekResultPanel.tsx";
 import { useState, type FormEvent } from "react";
 import WeekView, { weekFigures } from "../WeekView.tsx";
 import { shareTicket, unpaidIn } from "../shareImage.ts";
@@ -232,6 +233,7 @@ export default function AdminWeeks() {
                   Makes a 1080×1080 "game ticket" image of this board with both teams' colors and logos. On a
                   phone it opens the share sheet; on a computer it downloads a JPG.
                 </p>
+                <WeekResultPanel key={board.id} board={board} />
               </>
             )}
           </section>

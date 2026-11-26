@@ -1,3 +1,4 @@
+import LastWinner from "../LastWinner.tsx";
 import SquarePicker from "../SquarePicker.tsx";
 import Board from "../Board.tsx";
 import { useState } from "react";
@@ -76,44 +77,47 @@ export default function Home({ uid, pickFromMs = null }: { uid: string; pickFrom
           />
         </div>
       )}
-      <div className="area-title week-heading">
-        {current ? (
-          <>
-            <h1 className="week-kicker">Week {current.week}</h1>
-            <p className="page-title week-matchup">
-              {current.away.short} @ {current.home.short}
-            </p>
-            <div className="week-arrows">
-              <button
-                type="button"
-                className="week-arrow"
-                disabled={!prevWeek}
-                aria-label={prevWeek ? `Week ${prevWeek.week}` : "No earlier week"}
-                onClick={() => prevWeek && setPicked(prevWeek.week)}
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                className="week-arrow"
-                disabled={!nextWeek}
-                aria-label={nextWeek ? `Week ${nextWeek.week}` : "No later week"}
-                onClick={() => nextWeek && setPicked(nextWeek.week)}
-              >
-                ›
-              </button>
-            </div>
-            <span className={`status-pill week-status status-${current.status}`}>
-                {current.status === "locked"
-                  ? "Locked · numbers drawn"
-                  : current.status === "open"
-                    ? "Open · numbers drawn at lock"
-                    : "Draft"}
-            </span>
-          </>
-        ) : (
-          <h1 className="page-title">{CURRENT_SEASON} season board</h1>
-        )}
+      <div className="area-title title-row">
+        <div className="week-heading">
+          {current ? (
+            <>
+              <h1 className="week-kicker">Week {current.week}</h1>
+              <p className="page-title week-matchup">
+                {current.away.short} @ {current.home.short}
+              </p>
+              <div className="week-arrows">
+                <button
+                  type="button"
+                  className="week-arrow"
+                  disabled={!prevWeek}
+                  aria-label={prevWeek ? `Week ${prevWeek.week}` : "No earlier week"}
+                  onClick={() => prevWeek && setPicked(prevWeek.week)}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="week-arrow"
+                  disabled={!nextWeek}
+                  aria-label={nextWeek ? `Week ${nextWeek.week}` : "No later week"}
+                  onClick={() => nextWeek && setPicked(nextWeek.week)}
+                >
+                  ›
+                </button>
+              </div>
+              <span className={`status-pill week-status status-${current.status}`}>
+                  {current.status === "locked"
+                    ? "Locked · numbers drawn"
+                    : current.status === "open"
+                      ? "Open · numbers drawn at lock"
+                      : "Draft"}
+              </span>
+            </>
+          ) : (
+            <h1 className="page-title">{CURRENT_SEASON} season board</h1>
+          )}
+        </div>
+        {lastResult && <LastWinner week={lastResult} uid={uid} />}
       </div>
 
       <div className="area-score">

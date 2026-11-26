@@ -66,7 +66,7 @@ interface Tab {
 
 const PLAYER_TABS: Tab[] = [
   { path: "/", label: "Board", icon: "board" },
-  { path: "/results", label: "Results", icon: "results" },
+  { path: "/leaderboard", label: "Leaderboard", icon: "results" },
   { path: "/rules", label: "Rules", icon: "rules" },
 ];
 

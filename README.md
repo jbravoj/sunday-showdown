@@ -83,6 +83,24 @@ Admin → **Weeks**. Each regular-season week (1–18) has one board at
 Players see the latest published week on the Board tab and can flip back to
 earlier weeks. Drafts are hidden from players by the Firestore rules.
 
+## Scoring, rollovers and the leaderboard
+
+- **Automatic:** the 5-minute job checks locked boards from 3 hours after
+  kickoff (for up to 4 days). Once the NFL feed says the game is final, it
+  takes the end-of-regulation score (quarters 1–4; overtime never counts),
+  finds the winning square with the same code as the Simulator, and saves
+  `week.result`. A paid square wins the whole pot; an unpaid square or a black
+  cell rolls it over. The admin gets an email and a banner to review it.
+- **Manual / override:** Admin → Weeks → Result: **Looks right** confirms an
+  automatic result, **Fix score** replaces it. Boards typed in by hand (no
+  feed game) are always scored this way. A week's score can't change once a
+  later board has locked with its rollover.
+- **Rollovers:** the season keeps `carryCents`; the next board to lock adds it
+  to its pot and stores it as `rolloverInCents`.
+- **Home:** the heading shows the latest result (winner or rollover).
+- **Leaderboard** tab (replaces Results): season totals, a podium, standings
+  (wins, won, paid in, net) and every week's result.
+
 ## Invite requests, join alerts and emailed invites
 
 - Sign-up asks for the name on their square, email and password, then shows
