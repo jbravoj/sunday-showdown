@@ -2152,6 +2152,9 @@ body::after {
 .week-status {
   grid-area: status;
   justify-self: start;
+  width: max-content;
+  max-width: 100%;
+  white-space: nowrap;
 }
 @media (min-width: 960px) {
   .week-heading {
