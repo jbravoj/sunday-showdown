@@ -277,7 +277,6 @@ export interface WeekBoard {
   result?: WeekResult & { confirmed?: boolean };
   /** Pot carried in from a week nobody won (frozen at lock). */
   rolloverInCents?: number;
-  source?: string;
   gameId?: string | null;
 }
 
