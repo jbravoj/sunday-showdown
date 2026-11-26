@@ -83,7 +83,7 @@ export default function Home({ uid, pickFromMs = null }: { uid: string; pickFrom
             <p className="page-title week-matchup">
               {current.away.short} @ {current.home.short}
             </p>
-            <div className="week-nav">
+            <div className="week-arrows">
               <button
                 type="button"
                 className="week-arrow"
@@ -102,14 +102,14 @@ export default function Home({ uid, pickFromMs = null }: { uid: string; pickFrom
               >
                 ›
               </button>
-              <span className={`status-pill status-${current.status}`}>
+            </div>
+            <span className={`status-pill week-status status-${current.status}`}>
                 {current.status === "locked"
                   ? "Locked · numbers drawn"
                   : current.status === "open"
                     ? "Open · numbers drawn at lock"
                     : "Draft"}
-              </span>
-            </div>
+            </span>
           </>
         ) : (
           <h1 className="page-title">{CURRENT_SEASON} season board</h1>
