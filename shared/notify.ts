@@ -91,3 +91,18 @@ export function inviteMail(code: string, name: string | null, expiresAt: Date, b
     ),
   };
 }
+
+/** To the admin: a week was scored automatically from the NFL feed. */
+export function weekScoredMail(week: number, headline: string, detail: string, base: string = SITE_URL): Mail {
+  const link = `${base}/#/weeks`;
+  return {
+    subject: `Week ${week} final: ${headline}`,
+    text: `Week ${week} was scored from the NFL feed: ${headline}.\n${detail}\n\nCheck it in Admin → Weeks: ${link}`,
+    html: card(
+      `Week ${week}: ${escapeHtml(headline)}`,
+      [escapeHtml(detail), "Scored automatically from the NFL feed. If anything looks off, fix the score in Admin → Weeks."],
+      { label: "Review it", href: link },
+      "You get this because you're the Sunday Showdown admin.",
+    ),
+  };
+}

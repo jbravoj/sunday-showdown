@@ -1,4 +1,6 @@
-import { navigate, useInviteRequests, usePendingPlayers } from "./session.ts";
+import { navigate, useInviteRequests, usePendingPlayers, useWeeks } from "./session.ts";
+import { formatCents } from "../shared/game.ts";
+import { resultHeadline } from "../shared/scoring.ts";
 
 /**
  * Banner across the top of every admin page while someone is waiting on the
@@ -8,9 +10,19 @@ import { navigate, useInviteRequests, usePendingPlayers } from "./session.ts";
 export default function AdminAlerts({ route }: { route: string }) {
   const requests = useInviteRequests(true).filter((r) => r.status === "waiting");
   const pending = usePendingPlayers(true);
-  if (requests.length === 0 && pending.length === 0) return null;
+  const weeksState = useWeeks(true);
+  const toReview = weeksState.loading
+    ? []
+    : weeksState.weeks.filter((w) => w.result && w.result.source === "auto" && !w.result.confirmed);
+  if (requests.length === 0 && pending.length === 0 && toReview.length === 0) return null;
 
   const items: { key: string; text: string; action: string; path: string }[] = [
+    ...toReview.map((w) => ({
+      key: `w-${w.id}`,
+      text: `Week ${w.week} final: ${resultHeadline(w.result!, formatCents)}`,
+      action: "Review",
+      path: "/weeks",
+    })),
     ...requests.map((r) => ({
       key: `r-${r.uid}`,
       text: `${r.displayName} wants an invite`,

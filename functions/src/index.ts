@@ -39,7 +39,7 @@ import {
   vacate,
   type SquareOp,
 } from "../../shared/season.ts";
-import { shuffleDigits } from "../../shared/game.ts";
+import { formatCents, shuffleDigits } from "../../shared/game.ts";
 import { findSundayNightGame, parseScoreboard, scoreboardUrl, type Team } from "../../shared/schedule.ts";
 import {
   checkWeekOp,
@@ -57,7 +57,8 @@ import {
 } from "../../shared/week.ts";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
-import { inviteMail, inviteRequestMail, playerJoinedMail } from "../../shared/notify.ts";
+import { inviteMail, inviteRequestMail, playerJoinedMail, weekScoredMail } from "../../shared/notify.ts";
+import { isValidScore, resultHeadline, scoreLockedWeek, type WeekResult } from "../../shared/scoring.ts";
 import { MAIL_SECRETS, sendMail } from "./mail.ts";
 import { logger } from "firebase-functions/v2";
 
@@ -638,7 +639,8 @@ function lockInTx(
   const leftDigits = shuffleDigits(randomInt);
   const squares = normalizeSquares(seasonSnap.get("squares"));
   const payments = (weekSnap.get("payments") ?? {}) as Payments;
-  const rolloverInCents = Number(weekSnap.get("rolloverInCents") ?? 0); // Phase 7 fills this in
+  // A pot that rolled over from the last scored week joins this one.
+  const rolloverInCents = Number(weekSnap.get("rolloverInCents") ?? seasonSnap.get("carryCents") ?? 0);
   const prepaid = (seasonSnap.get("prepaid") ?? {}) as Prepaid;
   const snapshot = lockSnapshot(squares, payments, rolloverInCents, prepaid, Number(weekSnap.get("week")));
   const wasDraft = weekSnap.get("status") === "draft";
@@ -650,10 +652,12 @@ function lockInTx(
     paidSquareIds: snapshot.paidSquareIds,
     payments: snapshot.payments,
     prize: snapshot.prize,
+    rolloverInCents,
     lockedAt: FieldValue.serverTimestamp(),
     lockedBy: actor,
     ...(wasDraft ? { publishedAt: FieldValue.serverTimestamp() } : {}),
   });
+  if (rolloverInCents > 0) tx.set(seasonRef, { carryCents: 0 }, { merge: true });
   audit(tx, actor, "week.lock", ref, {
     week: weekSnap.get("week"),
     topDigits,
@@ -661,6 +665,102 @@ function lockInTx(
     paidSquareIds: snapshot.paidSquareIds,
     potCents: snapshot.prize.potCents,
   });
+}
+
+/**
+ * Writes a locked week's result and sets the season's carry-over (the pot
+ * that joins the next board when nobody wins). Returns the result.
+ */
+function recordResult(
+  tx: Transaction,
+  ref: DocumentReference,
+  weekSnap: DocumentSnapshot,
+  homeScore: number,
+  awayScore: number,
+  source: WeekResult["source"],
+  actor: string,
+): WeekResult {
+  const topDigits = weekSnap.get("topDigits") as number[] | null;
+  const leftDigits = weekSnap.get("leftDigits") as number[] | null;
+  if (!topDigits || !leftDigits) throw new HttpsError("failed-precondition", "This board has no numbers yet.");
+  const result = scoreLockedWeek(
+    {
+      squares: normalizeSquares(weekSnap.get("squares")),
+      topDigits,
+      leftDigits,
+      paidSquareIds: (weekSnap.get("paidSquareIds") ?? []) as string[],
+      potCents: Number(weekSnap.get("prize.potCents") ?? 0),
+    },
+    homeScore,
+    awayScore,
+    source,
+  );
+  tx.update(ref, {
+    result: { ...result, confirmed: source === "manual", recordedAt: FieldValue.serverTimestamp(), recordedBy: actor },
+  });
+  tx.set(seasonRef, { carryCents: result.rolloverOutCents, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  audit(tx, actor, "week.result", ref, {
+    week: weekSnap.get("week"),
+    homeScore,
+    awayScore,
+    source,
+    kind: result.kind,
+    squareId: result.squareId,
+    awardedCents: result.awardedCents,
+    rolloverOutCents: result.rolloverOutCents,
+  });
+  return result;
+}
+
+/** Which ESPN season a week's matchup came from ("espn" → this season, "espn-2026" → 2026). */
+function scheduleYearOf(source: unknown): string | null {
+  if (source === "espn") return CURRENT_SEASON;
+  const m = typeof source === "string" ? /^espn-(20\d\d)$/.exec(source) : null;
+  return m ? m[1] : null;
+}
+
+/**
+ * Scores locked boards whose game is over: pulls the end-of-regulation score
+ * from the NFL feed (overtime never counts), records the result, and emails
+ * the admin to review it. Boards typed in by hand (no feed game) wait for the
+ * admin to enter the score.
+ */
+async function scoreFinishedGames(now: number): Promise<void> {
+  const locked = await seasonRef.collection("weeks").where("status", "==", "locked").get();
+  const due = locked.docs.filter((d) => {
+    const kickoff = (d.get("kickoff") as Timestamp | undefined)?.toMillis() ?? 0;
+    // From 3 hours after kickoff until 4 days after (then the admin enters it).
+    return !d.get("result") && d.get("gameId") && kickoff > 0 && now >= kickoff + 3 * 3600_000 && now <= kickoff + 4 * 86_400_000;
+  });
+  for (const doc of due) {
+    const year = scheduleYearOf(doc.get("source"));
+    if (!year) continue;
+    try {
+      const res = await fetch(scoreboardUrl(year, Number(doc.get("week"))), { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const game = parseScoreboard(await res.json()).find((g) => g.id === doc.get("gameId"));
+      if (!game || !game.final || !game.regulation) continue;
+      const { home, away } = game.regulation;
+      const result = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(doc.ref);
+        if (!snap.exists || snap.get("result") || snap.get("status") !== "locked") return null;
+        return recordResult(tx, doc.ref, snap, home, away, "auto", "system");
+      });
+      if (!result) continue;
+      logger.info(`Scored ${doc.id}: ${result.kind}`);
+      const homeTeam = String(doc.get("home.short") ?? "Home");
+      const awayTeam = String(doc.get("away.short") ?? "Away");
+      await sendMail(
+        weekScoredMail(
+          Number(doc.get("week")),
+          resultHeadline(result, formatCents),
+          `${awayTeam} ${away}, ${homeTeam} ${home} at the end of regulation · numbers ${home % 10} / ${away % 10}`,
+        ),
+      );
+    } catch (err) {
+      logger.error(`Scoring failed for ${doc.id}`, err);
+    }
+  }
 }
 
 function teamArg(value: unknown, field: string): Team {
@@ -755,6 +855,36 @@ export const manageWeek = onCall({ timeoutSeconds: 30 }, async (req) => {
     return { ok: true, summary: `Week ${week}: ${matchup.away.short} at ${matchup.home.short}.` };
   }
 
+  if (op === "score" || op === "confirmResult") {
+    const summary = await db.runTransaction(async (tx) => {
+      const [snap, later] = await Promise.all([
+        tx.get(ref),
+        tx.get(seasonRef.collection("weeks").where("status", "==", "locked")),
+      ]);
+      if (!snap.exists || snap.get("status") !== "locked") {
+        throw new HttpsError("failed-precondition", "Only a locked board can be scored.");
+      }
+      if (op === "confirmResult") {
+        if (!snap.get("result")) throw new HttpsError("failed-precondition", "This week has no result yet.");
+        tx.update(ref, { "result.confirmed": true });
+        audit(tx, admin.uid, "week.confirmResult", ref, { week });
+        return `Week ${week} result confirmed.`;
+      }
+      if (later.docs.some((d) => Number(d.get("week")) > Number(week))) {
+        throw new HttpsError(
+          "failed-precondition",
+          `A later board has already locked with this week's rollover, so week ${week}'s score can't change now.`,
+        );
+      }
+      if (!isValidScore(data.homeScore) || !isValidScore(data.awayScore)) {
+        throw new HttpsError("invalid-argument", "Enter both end-of-regulation scores (whole numbers).");
+      }
+      const result = recordResult(tx, ref, snap, data.homeScore, data.awayScore, "manual", admin.uid);
+      return `Week ${week}: ${resultHeadline(result, formatCents)}.`;
+    });
+    return { ok: true, summary };
+  }
+
   if (op !== "publish" && op !== "lock" && op !== "delete") {
     throw new HttpsError("invalid-argument", "Unknown operation.");
   }
@@ -824,7 +954,7 @@ export const setPayment = onCall(async (req) => {
  * publish can't stall the week.
  */
 export const autoLockBoards = onSchedule(
-  { schedule: "every 5 minutes", timeZone: "America/Chicago", retryCount: 1 },
+  { schedule: "every 5 minutes", timeZone: "America/Chicago", retryCount: 1, secrets: MAIL_SECRETS },
   async () => {
     const pending = await seasonRef.collection("weeks").where("status", "in", ["draft", "open"]).get();
     const now = Date.now();
@@ -836,6 +966,11 @@ export const autoLockBoards = onSchedule(
       await seatOverduePlayers(now, lockingSoon);
     } catch (err) {
       logger.error("Auto-pick failed", err);
+    }
+    try {
+      await scoreFinishedGames(now);
+    } catch (err) {
+      logger.error("Scoring pass failed", err);
     }
     // Keeps the public seat count right even if a player change was missed.
     try {

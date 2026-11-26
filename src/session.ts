@@ -1,3 +1,4 @@
+import type { WeekResult } from "../shared/scoring.ts";
 import { RULES_VERSION } from "../shared/rules.ts";
 import { useEffect, useState } from "react";
 import {
@@ -272,14 +273,11 @@ export interface WeekBoard {
   /** Frozen at lock. */
   paidSquareIds?: string[];
   prize?: PrizeBreakdown;
-  /** Set once the game is final (Phase 7). Home = top, away = side. */
-  result?: {
-    kind: "win" | "rollover";
-    squareId: string | null;
-    awardedCents: number;
-    homeScore: number;
-    awayScore: number;
-  };
+  /** Set once the game is final. Home = top, away = side. */
+  result?: WeekResult & { confirmed?: boolean };
+  /** Pot carried in from a week nobody won (frozen at lock). */
+  rolloverInCents?: number;
+  gameId?: string | null;
 }
 
 export type WeeksState =

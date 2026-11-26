@@ -9,6 +9,7 @@ import AdminPlayers from "./screens/AdminPlayers.tsx";
 import Home from "./screens/Home.tsx";
 import Join from "./screens/Join.tsx";
 import Verify from "./screens/Verify.tsx";
+import Leaderboard from "./screens/Leaderboard.tsx";
 import Pending from "./screens/Pending.tsx";
 import Rules, { RulesList } from "./screens/Rules.tsx";
 import SignIn from "./screens/SignIn.tsx";
@@ -83,13 +84,9 @@ export default function App() {
         <RulesList />
       </section>
     );
-  } else if (route === "/results") {
-    screen = (
-      <section className="card panel">
-        <h2>Results</h2>
-        <p>Every week's winner and rollover will be listed here once the 2027 season starts.</p>
-      </section>
-    );
+  } else if (route === "/leaderboard" || route === "/results") {
+    screen = <Leaderboard uid={auth.user.uid} />;
+    wide = true;
   } else {
     const pickFrom = player.pickWindowFrom ?? player.approvedAt ?? null;
     screen = <Home uid={auth.user.uid} pickFromMs={pickFrom ? pickFrom.toMillis() : null} />;

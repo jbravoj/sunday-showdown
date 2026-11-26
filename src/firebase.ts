@@ -59,7 +59,8 @@ export const api = {
   manageWeek: callable<
     | { op: "fetch"; week: number; scheduleYear?: number }
     | { op: "manual"; week: number; home: string; away: string; kickoff: string }
-    | { op: "publish" | "lock" | "delete"; week: number },
+    | { op: "publish" | "lock" | "delete" | "confirmResult"; week: number }
+    | { op: "score"; week: number; homeScore: number; awayScore: number },
     { ok: true; summary: string }
   >("manageWeek"),
   markFullyPaid: callable<{ uid: string; undo?: boolean }, { ok: true; summary: string }>(
