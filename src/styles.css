@@ -1250,13 +1250,12 @@ details.panel .rules {
     grid-template-columns: minmax(0, 1fr) 380px;
     grid-template-areas:
       "banner banner"
-      "title title"
-      "board score"
+      "title score"
       "board square"
       "board paid"
       "board sample"
       "board .";
-    grid-template-rows: auto auto auto auto auto auto 1fr;
+    grid-template-rows: auto auto auto auto auto 1fr;
     column-gap: 24px;
     row-gap: 16px;
     align-items: start;
@@ -2124,15 +2123,49 @@ body::after {
   font-size: 2.1rem;
   line-height: 1;
 }
-.week-nav {
-  display: flex;
+/* Phones: "WEEK 12" with ‹ › beside it, status underneath.
+   Desktop: week, matchup, then ‹ › and status on one row. */
+.week-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "kicker arrows"
+    "status status";
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
+  column-gap: 12px;
+  row-gap: 10px;
 }
-.week-nav .status-pill {
-  margin-left: 6px;
+.week-heading > .page-title {
+  grid-column: 1 / -1;
+}
+.week-kicker {
+  grid-area: kicker;
+}
+.week-matchup {
+  grid-area: matchup;
+}
+.week-arrows {
+  grid-area: arrows;
+  display: flex;
+  gap: 8px;
+}
+.week-status {
+  grid-area: status;
+  justify-self: start;
+  width: max-content;
+  max-width: 100%;
+  white-space: nowrap;
+}
+@media (min-width: 960px) {
+  .week-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "kicker kicker"
+      "matchup matchup"
+      "arrows status";
+    align-self: center;
+    column-gap: 14px;
+  }
 }
 .week-arrow {
   display: grid;
