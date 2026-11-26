@@ -2656,3 +2656,12 @@ body::after {
     display: none;
   }
 }
+
+.last-win-next {
+  border-style: dashed;
+  box-shadow: none;
+}
+.last-win-next .last-win-icon {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}

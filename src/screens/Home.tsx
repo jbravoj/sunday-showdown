@@ -1,4 +1,4 @@
-import LastWinner from "../LastWinner.tsx";
+import LastWinner, { UpNext } from "../LastWinner.tsx";
 import SquarePicker from "../SquarePicker.tsx";
 import Board from "../Board.tsx";
 import { useState } from "react";
@@ -117,7 +117,11 @@ export default function Home({ uid, pickFromMs = null }: { uid: string; pickFrom
             <h1 className="page-title">{CURRENT_SEASON} season board</h1>
           )}
         </div>
-        {lastResult && <LastWinner week={lastResult} uid={uid} />}
+        {lastResult ? (
+          <LastWinner week={lastResult} uid={uid} />
+        ) : (
+          current && fig && <UpNext week={current} potCents={fig.potCents} />
+        )}
       </div>
 
       <div className="area-score">
