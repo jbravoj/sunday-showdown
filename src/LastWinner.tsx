@@ -1,57 +1,115 @@
+import type { ReactNode } from "react";
 import { formatCents } from "../shared/game.ts";
 import { squareNumber } from "../shared/season.ts";
 import type { WeekBoard } from "./session.ts";
 
 /**
- * Before any week has a result: what's at stake this week. Turns into the
- * winner strip once the first game is scored.
+ * The "split ticket" beside the week heading: the prize on the stub, the
+ * winner on the right. Three states: this week's prize before any result,
+ * the latest winner, or the latest rollover.
  */
-export function UpNext({ week, potCents }: { week: WeekBoard; potCents: number }) {
-  const when = week.kickoff.toDate().toLocaleDateString("en-US", { weekday: "long" });
+function Ticket({
+  tone,
+  label,
+  amount,
+  rightLabel,
+  name,
+  sub,
+  tag,
+  hotTag = false,
+}: {
+  tone: "next" | "won" | "roll";
+  label: string;
+  amount: string;
+  rightLabel: string;
+  name: ReactNode;
+  sub: string;
+  tag: string | null;
+  hotTag?: boolean;
+}) {
   return (
-    <div className="last-win last-win-next">
-      <span className="last-win-icon" aria-hidden="true">🏆</span>
-      <div className="last-win-body">
-        <p className="last-win-label">Week {week.week} winner</p>
-        <p className="last-win-name">Crowned after {when} night</p>
-        <p className="last-win-score">
-          {week.away.short} @ {week.home.short} · winner shows here after the game
-        </p>
+    <div className={`ticket ticket-${tone}`}>
+      <div className="ticket-stub">
+        <p className="ticket-label">{label}</p>
+        <p className="ticket-amt">{amount}</p>
       </div>
-      <span className="last-win-amt">{formatCents(potCents)}</span>
+      <span className="ticket-notch ticket-notch-top" aria-hidden="true" />
+      <span className="ticket-notch ticket-notch-bottom" aria-hidden="true" />
+      <div className="ticket-main">
+        <p className="ticket-label">{rightLabel}</p>
+        <p className="ticket-name">{name}</p>
+        <p className="ticket-sub">{sub}</p>
+        {tag && <span className={`ticket-tag${hotTag ? " ticket-tag-hot" : ""}`}>{tag}</span>}
+      </div>
     </div>
   );
 }
 
-/** Strip beside the week heading: the most recent week's winner, or its rollover. */
+/** Before any week has a result: this week's prize, winner to be crowned. */
+export function UpNext({
+  week,
+  potCents,
+  paid,
+  seated,
+}: {
+  week: WeekBoard;
+  potCents: number;
+  paid: number;
+  seated: number;
+}) {
+  const day = week.kickoff.toDate().toLocaleDateString("en-US", { weekday: "long" });
+  return (
+    <Ticket
+      tone="next"
+      label={`Week ${week.week} prize`}
+      amount={formatCents(potCents)}
+      rightLabel="Winner"
+      name="To be crowned"
+      sub={`${day} night · ${week.away.short} @ ${week.home.short}`}
+      tag={seated > 0 ? `${paid} of ${seated} paid` : null}
+    />
+  );
+}
+
+/** The most recent week's result: its winner, or the pot that rolled over. */
 export default function LastWinner({ week, uid }: { week: WeekBoard; uid: string }) {
   const r = week.result!;
-  const score = `${week.away.short} ${r.awayScore}, ${week.home.short} ${r.homeScore}`;
+  const score =
+    r.awayScore >= r.homeScore
+      ? `${week.away.short} ${r.awayScore}, ${week.home.short} ${r.homeScore}`
+      : `${week.home.short} ${r.homeScore}, ${week.away.short} ${r.awayScore}`;
   if (r.kind === "rollover") {
     return (
-      <div className="last-win last-win-roll">
-        <span className="last-win-icon" aria-hidden="true">↻</span>
-        <div className="last-win-body">
-          <p className="last-win-label">Week {week.week} · no winner</p>
-          <p className="last-win-name">{formatCents(r.rolloverOutCents)} rolled over</p>
-          <p className="last-win-score">{score}</p>
-        </div>
-      </div>
+      <Ticket
+        tone="roll"
+        label={`Week ${week.week} · rollover`}
+        amount={formatCents(r.rolloverOutCents)}
+        rightLabel="No winner"
+        name="Pot rolls over"
+        sub={score}
+        tag={
+          r.reason === "unpaid" && r.squareId
+            ? `Square ${squareNumber(r.squareId)} hadn't paid`
+            : "Landed on a black square"
+        }
+      />
     );
   }
   const you = r.uid === uid;
   return (
-    <div className="last-win">
-      <span className="last-win-icon" aria-hidden="true">🏆</span>
-      <div className="last-win-body">
-        <p className="last-win-label">Week {week.week} winner{you ? " · that's you!" : ""}</p>
-        <p className="last-win-name">
-          {r.name ?? "Winner"}
-          {r.squareId ? ` · Square ${squareNumber(r.squareId)}` : ""}
-        </p>
-        <p className="last-win-score">{score}</p>
-      </div>
-      <span className="last-win-amt">{formatCents(r.awardedCents)}</span>
-    </div>
+    <Ticket
+      tone="won"
+      label={`Week ${week.week} · won`}
+      amount={formatCents(r.awardedCents)}
+      rightLabel={you ? "Winner · that's you!" : "Winner"}
+      name={
+        <>
+          {r.name ?? "Winner"} <span aria-hidden="true">🏆</span>
+        </>
+      }
+      sub={score}
+      tag={r.squareId ? `Square ${squareNumber(r.squareId)}` : null}
+      hotTag
+    />
   );
 }
