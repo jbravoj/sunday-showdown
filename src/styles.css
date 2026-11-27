@@ -2210,77 +2210,6 @@ body::after {
     align-items: center;
     gap: 28px;
   }
-  .title-row .last-win {
-    margin: 0 auto;
-  }
-}
-.last-win {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  padding: 12px 18px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 178, 26, 0.5);
-  background: linear-gradient(90deg, rgba(255, 122, 26, 0.16), rgba(90, 72, 245, 0.14));
-  box-shadow: 0 0 26px rgba(255, 122, 26, 0.2);
-}
-.last-win p {
-  margin: 0;
-}
-.last-win-icon {
-  flex: none;
-  font-size: 2rem;
-  line-height: 1;
-}
-.last-win-body {
-  min-width: 0;
-}
-.last-win-label {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.last-win-name {
-  overflow: hidden;
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 900;
-  font-size: 1.35rem;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.last-win-score {
-  font-size: 0.8rem;
-  color: #c9d0f0;
-}
-.last-win-amt {
-  flex: none;
-  margin-left: auto;
-  padding-left: 8px;
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 900;
-  font-size: 2rem;
-  line-height: 1;
-  background: linear-gradient(180deg, #ffd08a, #ff7a1a);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.last-win-roll {
-  border-color: rgba(255, 77, 109, 0.45);
-  background: linear-gradient(90deg, rgba(255, 77, 109, 0.12), rgba(90, 72, 245, 0.12));
-  box-shadow: none;
-}
-.last-win-roll .last-win-icon {
-  color: #ff8a9b;
-}
-.last-win-roll .last-win-name {
-  color: #ff8a9b;
 }
 
 /* ---- Admin: week result ---- */
@@ -2657,17 +2586,129 @@ body::after {
   }
 }
 
-.last-win-next {
+/* ---- Winner "split ticket": prize on the stub, winner on the right ---- */
+.ticket {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42% minmax(0, 1fr);
+  min-height: 132px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 178, 26, 0.5);
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.16), rgba(90, 72, 245, 0.14));
+}
+.ticket p {
+  margin: 0;
+}
+.ticket-stub {
+  display: grid;
+  place-content: center;
+  padding: 12px 8px;
+  background: rgba(255, 122, 26, 0.12);
+  text-align: center;
+}
+.ticket-label {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ticket-amt {
+  margin-top: 6px !important;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(1.9rem, 7vw, 2.9rem);
+  line-height: 1;
+  background: linear-gradient(180deg, #ffd08a, #ff7a1a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* The tear line between stub and ticket, with a notch at each end. */
+.ticket-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 18px 12px 22px;
+  border-left: 2px dashed rgba(255, 255, 255, 0.18);
+}
+.ticket-notch {
+  position: absolute;
+  left: calc(42% - 10px);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 178, 26, 0.45);
+  background: var(--bg);
+}
+.ticket-notch-top {
+  top: -12px;
+}
+.ticket-notch-bottom {
+  bottom: -12px;
+}
+.ticket-name {
+  overflow: hidden;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(1.25rem, 4.6vw, 1.8rem);
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ticket-sub {
+  overflow: hidden;
+  font-size: 0.82rem;
+  color: #c9d0f0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ticket-tag {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #c9d0f0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ticket-tag-hot {
+  border: 0;
+  background: linear-gradient(135deg, #ff7a1a, #ffb21a);
+  color: #0e0d2a;
+}
+.ticket-next {
   border-style: dashed;
-  box-shadow: none;
+  border-color: rgba(255, 178, 26, 0.45);
 }
-.last-win-next .last-win-icon {
-  opacity: 0.55;
-  filter: grayscale(0.4);
+.ticket-won {
+  box-shadow: 0 0 30px rgba(255, 122, 26, 0.25);
 }
-
-/* Desktop: the winner strip fills the heading row top to bottom, matching
-   the score card beside it, and the matchup stays on one line. */
+.ticket-roll {
+  border-color: rgba(255, 77, 109, 0.45);
+  background: linear-gradient(90deg, rgba(255, 77, 109, 0.12), rgba(90, 72, 245, 0.12));
+}
+.ticket-roll .ticket-stub {
+  background: rgba(255, 77, 109, 0.1);
+}
+.ticket-roll .ticket-amt {
+  background: linear-gradient(180deg, #ffc2cc, #ff4d6d);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.ticket-roll .ticket-notch {
+  border-color: rgba(255, 77, 109, 0.45);
+}
+/* Desktop: the ticket fills the heading row top to bottom beside the week. */
 @media (min-width: 960px) {
   .area-title.title-row {
     align-self: stretch;
@@ -2680,29 +2721,8 @@ body::after {
   .title-row .week-matchup {
     white-space: nowrap;
   }
-  .title-row .last-win {
+  .title-row .ticket {
     flex: 1;
-    align-self: stretch;
-    margin: 0;
-    padding: 18px 26px;
-    gap: 18px;
-  }
-  .title-row .last-win-icon {
-    font-size: 2.8rem;
-  }
-  /* Wraps to a second line instead of cutting off. */
-  .title-row .last-win-name {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    font-size: 1.55rem;
-    line-height: 1.1;
-    white-space: normal;
-  }
-  .title-row .last-win-score {
-    font-size: 0.9rem;
-  }
-  .title-row .last-win-amt {
-    font-size: 2.6rem;
+    min-width: 0;
   }
 }

@@ -120,7 +120,9 @@ export default function Home({ uid, pickFromMs = null }: { uid: string; pickFrom
         {lastResult ? (
           <LastWinner week={lastResult} uid={uid} />
         ) : (
-          current && fig && <UpNext week={current} potCents={fig.potCents} />
+          current && fig && (
+            <UpNext week={current} potCents={fig.potCents} paid={fig.paid.length} seated={fig.seated.length} />
+          )
         )}
       </div>
 
