@@ -2665,3 +2665,44 @@ body::after {
   opacity: 0.55;
   filter: grayscale(0.4);
 }
+
+/* Desktop: the winner strip fills the heading row top to bottom, matching
+   the score card beside it, and the matchup stays on one line. */
+@media (min-width: 960px) {
+  .area-title.title-row {
+    align-self: stretch;
+    align-items: stretch;
+  }
+  .title-row .week-heading {
+    flex: none;
+    align-self: center;
+  }
+  .title-row .week-matchup {
+    white-space: nowrap;
+  }
+  .title-row .last-win {
+    flex: 1;
+    align-self: stretch;
+    margin: 0;
+    padding: 18px 26px;
+    gap: 18px;
+  }
+  .title-row .last-win-icon {
+    font-size: 2.8rem;
+  }
+  /* Wraps to a second line instead of cutting off. */
+  .title-row .last-win-name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 1.55rem;
+    line-height: 1.1;
+    white-space: normal;
+  }
+  .title-row .last-win-score {
+    font-size: 0.9rem;
+  }
+  .title-row .last-win-amt {
+    font-size: 2.6rem;
+  }
+}
